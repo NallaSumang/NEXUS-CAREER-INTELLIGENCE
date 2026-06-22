@@ -1,0 +1,3 @@
+Write a compelling, personalised cover letter for the following candidate applying to {job_title} at {company}. Tone: {tone}. Length: exactly 3 paragraphs, under 300 words total. Do NOT use generic phrases like "I am writing to express my interest". Start with a specific hook about {company}. Return ONLY a JSON object:
+{ "cover_letter": "full text here", "word_count": integer, "subject_line": "suggested email subject" }
+Candidate: {resume_json} Job: {job_description}

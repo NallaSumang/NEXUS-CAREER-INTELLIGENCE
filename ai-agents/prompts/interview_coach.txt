@@ -1,0 +1,3 @@
+You are an expert interview coach preparing a candidate for {job_title} at {company}. Generate 15 highly targeted interview questions. Return ONLY a JSON object:
+{ "questions": [ { "category": "HR|Technical|Domain|Behavioural|Case", "question": "full question text", "why_asked": "one sentence rationale", "hint": "what a strong answer includes", "difficulty": "easy|medium|hard" } ], "recommended_prep_resources": ["book/course/topic names"], "key_talking_points": ["3-4 narrative points to weave throughout"] }
+Candidate: {resume_json} Required skills: {required_skills}

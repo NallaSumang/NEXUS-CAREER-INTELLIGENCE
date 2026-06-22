@@ -1,0 +1,3 @@
+You are an ATS (Applicant Tracking System) expert. Analyse the following job description and extract requirements. Return ONLY a JSON object:
+{ "jobTitle": "Extracted or inferred job title", "companyName": "Extracted or inferred company name", "requiredSkills": ["must-have skills"], "niceToHave": ["preferred but not required"], "experienceLevel": "entry|mid|senior|lead", "keywords": ["important ATS keywords"], "companyCulture": ["inferred culture signals"], "roleType": "full-time|contract|internship" }
+Job Description: {job_description}
