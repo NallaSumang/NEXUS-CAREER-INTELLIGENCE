@@ -30,9 +30,17 @@ export default function Layout({ onLogout }) {
               Nexus
             </span>
           </div>
-          <p className="text-[10px] tracking-widest uppercase text-[#555555] mt-2">
+          <p className="text-[10px] tracking-widest uppercase text-[#555555] mt-2 mb-4">
             v2.0.4 Online
           </p>
+          <div className="flex flex-col gap-2 items-start">
+            <span className="px-3 py-1 bg-sky-500/10 text-sky-400 border border-sky-500/20 text-[10px] tracking-widest uppercase rounded">
+              Agentic Swarm
+            </span>
+            <span className="px-3 py-1 bg-amber-500/10 text-amber-500 border border-amber-500/20 text-[10px] tracking-widest uppercase rounded">
+              Sumang's Signature Edition
+            </span>
+          </div>
         </div>
 
         <nav className="flex-1 py-8 px-4 flex flex-col gap-2">

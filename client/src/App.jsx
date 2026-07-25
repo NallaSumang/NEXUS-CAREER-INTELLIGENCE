@@ -39,9 +39,14 @@ function App() {
               Nexus
             </span>
           </div>
-          <button className="text-[10px] tracking-widest uppercase text-[#888888] hover:text-white transition-colors">
-            Contact Support
-          </button>
+          <div className="flex items-center gap-3">
+            <span className="px-3 py-1 bg-sky-500/10 text-sky-400 border border-sky-500/20 text-[10px] tracking-widest uppercase rounded">
+              Agentic Swarm
+            </span>
+            <span className="px-3 py-1 bg-amber-500/10 text-amber-500 border border-amber-500/20 text-[10px] tracking-widest uppercase rounded">
+              Sumang's Signature Edition
+            </span>
+          </div>
         </nav>
 
         <main className="flex-1 w-full max-w-5xl mx-auto p-8 flex flex-col">
