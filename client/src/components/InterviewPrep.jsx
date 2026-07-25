@@ -106,7 +106,7 @@ export default function InterviewPrep() {
             onChange={(e) => setApplicationId(e.target.value)}
           >
             {applications.map((app) => (
-              <option key={app._id} value={app._id}>
+              <option key={app._id} value={app._id} className="bg-slate-900 text-slate-300 py-2">
                 {app.jobId?.title || "Target Role"} at{" "}
                 {app.jobId?.company || "Company"} (
                 {new Date(app.createdAt).toLocaleDateString()})

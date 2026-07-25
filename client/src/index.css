@@ -9,40 +9,46 @@
 
 @layer base {
   body {
-    @apply bg-[#0A0A0A] text-[#888888] antialiased overflow-x-hidden;
+    @apply bg-slate-950 text-slate-300 antialiased overflow-x-hidden min-h-screen;
+    background-image: radial-gradient(circle at top right, #1e1b4b, #020617);
     font-family: var(--font-sans);
   }
 
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
+  h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-serif);
-    @apply tracking-tighter text-white;
+    @apply tracking-tight text-slate-100;
   }
 }
 
 @layer utilities {
   .glass-panel {
-    @apply bg-[#0A0A0A] border border-[#222222];
+    @apply bg-white/5 border border-white/10 backdrop-blur-xl shadow-xl shadow-black/40 rounded-2xl;
   }
 
   .glass-panel-hover {
-    @apply hover:border-[#444444] transition-colors duration-300;
+    @apply hover:border-amber-500/50 hover:bg-white/10 hover:shadow-amber-900/20 transition-all duration-300;
   }
 
   .text-gradient {
-    @apply text-white;
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-amber-200 to-amber-500;
   }
 
   .bg-gradient-premium {
-    @apply bg-[#0A0A0A];
+    @apply bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800;
   }
 }
 
-/* Remove animated blobs entirely for brutalist elegance */
+/* Global overrides to instantly convert the brutalist hardcoded UI into the luxury theme */
+[class*="bg-[#0A0A0A]"] { background-color: transparent !important; }
+[class*="bg-[#111111]"] { background-color: rgba(255,255,255,0.05) !important; }
+[class*="border-[#222222]"] { border-color: rgba(255,255,255,0.1) !important; }
+[class*="border-[#333333]"] { border-color: rgba(255,255,255,0.2) !important; }
+[class*="border-[#444444]"] { border-color: rgba(255,255,255,0.3) !important; }
+[class*="text-[#888888]"] { color: #94a3b8 !important; } /* text-slate-400 */
+[class*="text-[#555555]"] { color: #64748b !important; } /* text-slate-500 */
+[class*="text-[#D4AF37]"] { color: #38bdf8 !important; } /* text-sky-400 */
+[class*="bg-[#D4AF37]"] { background-color: #38bdf8 !important; }
+
 .animated-bg-blobs {
   display: none;
 }

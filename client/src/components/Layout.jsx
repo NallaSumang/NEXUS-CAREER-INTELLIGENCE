@@ -7,6 +7,7 @@ import {
   MessageSquare,
   LineChart,
   LogOut,
+  Hexagon
 } from "lucide-react";
 
 const navItems = [
@@ -19,13 +20,16 @@ const navItems = [
 
 export default function Layout({ onLogout }) {
   return (
-    <div className="flex h-screen bg-[#0A0A0A] text-[#888888] font-sans overflow-hidden selection:bg-[#333333] selection:text-white">
+    <div className="flex h-screen text-slate-300 font-sans overflow-hidden selection:bg-amber-500/30 selection:text-white">
       {/* Sidebar */}
-      <aside className="w-64 border-r border-[#222222] flex flex-col bg-[#0A0A0A]">
-        <div className="p-8 border-b border-[#222222]">
-          <span className="text-xl font-bold tracking-tighter text-white font-serif">
-            PlaceIQ
-          </span>
+      <aside className="w-64 border-r border-white/5 flex flex-col bg-slate-950/40 backdrop-blur-md">
+        <div className="p-8 border-b border-white/5">
+          <div className="flex items-center gap-3">
+            <Hexagon className="text-sky-400" size={24} />
+            <span className="text-xl font-bold tracking-tighter text-white font-serif">
+              Nexus
+            </span>
+          </div>
           <p className="text-[10px] tracking-widest uppercase text-[#555555] mt-2">
             v2.0.4 Online
           </p>
@@ -53,10 +57,10 @@ export default function Layout({ onLogout }) {
           })}
         </nav>
 
-        <div className="p-8 border-t border-[#222222]">
+        <div className="p-8 border-t border-white/10">
           <button
             onClick={onLogout}
-            className="flex items-center gap-4 w-full px-4 py-3 text-[10px] tracking-widest uppercase text-[#888888] hover:bg-[#111111] hover:text-white transition-colors text-left"
+            className="flex items-center gap-4 w-full px-4 py-3 text-[10px] tracking-widest uppercase text-slate-500 hover:bg-white/5 hover:text-white transition-colors text-left"
           >
             <LogOut size={16} />
             Disconnect

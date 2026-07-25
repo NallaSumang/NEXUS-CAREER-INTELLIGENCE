@@ -146,7 +146,7 @@ export default function Applications() {
               onChange={(e) => setSelectedResumeId(e.target.value)}
             >
               {resumes.map((r) => (
-                <option key={r._id} value={r._id}>
+                <option key={r._id} value={r._id} className="bg-slate-900 text-slate-300 py-2">
                   {r.originalFilename || r.fileName || "Resume"} -{" "}
                   {new Date(r.createdAt || Date.now()).toLocaleDateString()}
                 </option>

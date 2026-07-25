@@ -55,6 +55,16 @@ const initializeApp = async () => {
     app.use("/api/v1/ai", aiRoutes);
     app.use("/api/v1/applications", applicationRoutes);
 
+    // Serve React frontend statically in production/unified environments
+    const clientDist = path.resolve(__dirname, "../client/dist");
+    app.use(express.static(clientDist));
+    app.get("*", (req, res, next) => {
+      if (req.originalUrl.startsWith("/api")) {
+        return next(); // Let error handler catch API 404s
+      }
+      res.sendFile(path.resolve(clientDist, "index.html"));
+    });
+
     app.use(errorHandler);
   } catch (err) {
     console.error("❌ Failed to load routes:", err.message);

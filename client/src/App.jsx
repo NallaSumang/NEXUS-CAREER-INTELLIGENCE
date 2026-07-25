@@ -6,6 +6,7 @@ import {
   Navigate,
 } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { Hexagon } from "lucide-react";
 
 import Layout from "./components/Layout";
 import Dashboard from "./components/Dashboard";
@@ -30,11 +31,14 @@ function App() {
 
   if (!isLoggedIn) {
     return (
-      <div className="min-h-screen bg-[#0A0A0A] text-[#888888] flex flex-col font-sans selection:bg-[#333333] selection:text-white">
-        <nav className="w-full border-b border-[#222222] p-8 flex justify-between items-center">
-          <span className="text-xl font-bold tracking-tighter text-white font-serif">
-            PlaceIQ
-          </span>
+      <div className="min-h-screen text-slate-300 flex flex-col font-sans selection:bg-amber-500/30 selection:text-white">
+        <nav className="w-full border-b border-white/5 p-8 flex justify-between items-center bg-slate-950/40 backdrop-blur-md">
+          <div className="flex items-center gap-3">
+            <Hexagon className="text-sky-400" size={24} />
+            <span className="text-xl font-bold tracking-tighter text-white font-serif">
+              Nexus
+            </span>
+          </div>
           <button className="text-[10px] tracking-widest uppercase text-[#888888] hover:text-white transition-colors">
             Contact Support
           </button>
