@@ -1,5 +1,5 @@
 {
-  "name": "placeiq",
+  "name": "nexus",
   "scripts": {
     "dev": "concurrently -n API,AI,WEB -c blue,yellow,green \"npm run dev:api\" \"npm run dev:ai\" \"npm run dev:web\"",
     "dev:api": "cd server && node server.js",

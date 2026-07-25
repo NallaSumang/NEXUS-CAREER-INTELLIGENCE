@@ -1,22 +1,27 @@
-import path from 'path';
-import { fileURLToPath } from 'url';
-import dotenv from 'dotenv';
+import path from "path";
+import { fileURLToPath } from "url";
+import dotenv from "dotenv";
 
 // 🛑 MUST BE FIRST 🛑
 const __filename = fileURLToPath(import.meta.url);
-const __dirname  = path.dirname(__filename);
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.resolve(__dirname, "../.env") });
 // 🛑🛑🛑🛑🛑🛑🛑
 
-import express from 'express';
-import cors    from 'cors';
-import { connectDB } from './config/db.js';
-import { errorHandler } from './middleware/errorHandler.js';
+import express from "express";
+import cors from "cors";
+import { connectDB } from "./config/db.js";
+import { errorHandler } from "./middleware/errorHandler.js";
 
-const app  = express();
+const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:5173', credentials: true }));
+app.use(
+  cors({
+    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    credentials: true,
+  }),
+);
 app.use(express.json());
 
 // Initialize middlewares, routes
@@ -25,53 +30,57 @@ const initializeApp = async () => {
   try {
     await connectDB();
   } catch (err) {
-    console.error('❌ MongoDB failed:', err.message);
+    console.error("❌ MongoDB failed:", err.message);
   }
 
   // 2. Firebase Init
   try {
-    await import('./config/firebase.js');
-    console.log('✅ Firebase initialized');
+    await import("./config/firebase.js");
+    console.log("✅ Firebase initialized");
   } catch (err) {
-    console.error('⚠️ Firebase init failed:', err.message);
+    console.error("⚠️ Firebase init failed:", err.message);
   }
 
   // 3. Routes
   try {
-    const { default: authRoutes }   = await import('./routes/auth.routes.js');
-    const { default: resumeRoutes } = await import('./routes/resume.routes.js');
-    const { default: aiRoutes }     = await import('./routes/ai.routes.js');
+    const { default: authRoutes } = await import("./routes/auth.routes.js");
+    const { default: resumeRoutes } = await import("./routes/resume.routes.js");
+    const { default: aiRoutes } = await import("./routes/ai.routes.js");
     // Add new application routes
-    const { default: applicationRoutes } = await import('./routes/application.routes.js');
+    const { default: applicationRoutes } =
+      await import("./routes/application.routes.js");
 
-    app.use('/api/v1/auth',    authRoutes);
-    app.use('/api/v1/resumes', resumeRoutes);
-    app.use('/api/v1/ai',      aiRoutes);
-    app.use('/api/v1/applications', applicationRoutes);
-    
+    app.use("/api/v1/auth", authRoutes);
+    app.use("/api/v1/resumes", resumeRoutes);
+    app.use("/api/v1/ai", aiRoutes);
+    app.use("/api/v1/applications", applicationRoutes);
+
     app.use(errorHandler);
   } catch (err) {
-    console.error('❌ Failed to load routes:', err.message);
+    console.error("❌ Failed to load routes:", err.message);
   }
 
   // 4. BullMQ Workers (Only if not running on Vercel)
-  if (process.env.VERCEL !== '1') {
+  if (process.env.VERCEL !== "1") {
     try {
-      const { default: redis } = await import('./config/redis.js');
-      if (redis.status === 'wait') {
-         await redis.connect();
+      const { default: redis } = await import("./config/redis.js");
+      if (redis.status === "wait") {
+        await redis.connect();
       }
-      await import('./queues/workers/resumeWorker.js');
-      await import('./queues/workers/matchWorker.js');
-      console.log('✅ BullMQ workers started');
+      await import("./queues/workers/resumeWorker.js");
+      await import("./queues/workers/matchWorker.js");
+      console.log("✅ BullMQ workers started");
     } catch (err) {
-      console.warn('⚠️ Redis unavailable — AI queue workers disabled', err.message);
+      console.warn(
+        "⚠️ Redis unavailable — AI queue workers disabled",
+        err.message,
+      );
     }
   }
 };
 
 // Initialize if running as a standalone Express server
-if (process.env.VERCEL !== '1') {
+if (process.env.VERCEL !== "1") {
   initializeApp().then(() => {
     app.listen(PORT, () => {
       console.log(`✅ API Server 🚀 http://localhost:${PORT}`);

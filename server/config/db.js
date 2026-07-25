@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 let cached = global.mongoose;
 
@@ -18,27 +18,34 @@ export async function connectDB() {
       socketTimeoutMS: 45000,
     };
 
-    cached.promise = mongoose.connect(process.env.MONGO_URI, opts).then((mongoose) => {
-      console.log('✅ MongoDB Connected (Atlas/Serverless cached)');
-      return mongoose;
-    });
+    cached.promise = mongoose
+      .connect(process.env.MONGO_URI, opts)
+      .then((mongoose) => {
+        console.log("✅ MongoDB Connected (Atlas/Serverless cached)");
+        return mongoose;
+      });
   }
 
   try {
     cached.conn = await cached.promise;
   } catch (e) {
-    console.warn('⚠️ Bypassing Atlas firewall: Using local ephemeral MongoDB');
+    console.warn("⚠️ Bypassing Atlas firewall: Using local ephemeral MongoDB");
     try {
-      const { MongoMemoryServer } = await import('mongodb-memory-server');
+      const { MongoMemoryServer } = await import("mongodb-memory-server");
       const mongoServer = await MongoMemoryServer.create();
-      cached.promise = mongoose.connect(mongoServer.getUri()).then((mongoose) => {
-        console.log('✅ MongoDB Connected (Local Ephemeral)');
-        return mongoose;
-      });
+      cached.promise = mongoose
+        .connect(mongoServer.getUri())
+        .then((mongoose) => {
+          console.log("✅ MongoDB Connected (Local Ephemeral)");
+          return mongoose;
+        });
       cached.conn = await cached.promise;
     } catch (fallbackError) {
       cached.promise = null;
-      console.error('❌ Both Atlas and Local MongoDB failed:', fallbackError.message);
+      console.error(
+        "❌ Both Atlas and Local MongoDB failed:",
+        fallbackError.message,
+      );
       throw fallbackError;
     }
   }

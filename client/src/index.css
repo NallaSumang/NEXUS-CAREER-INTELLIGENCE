@@ -2,7 +2,9 @@
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-serif: "Playfair Display", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-serif:
+    "Playfair Display", ui-serif, Georgia, Cambria, "Times New Roman", Times,
+    serif;
 }
 
 @layer base {
@@ -11,7 +13,12 @@
     font-family: var(--font-sans);
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: var(--font-serif);
     @apply tracking-tighter text-white;
   }
@@ -21,11 +28,11 @@
   .glass-panel {
     @apply bg-[#0A0A0A] border border-[#222222];
   }
-  
+
   .glass-panel-hover {
     @apply hover:border-[#444444] transition-colors duration-300;
   }
-  
+
   .text-gradient {
     @apply text-white;
   }

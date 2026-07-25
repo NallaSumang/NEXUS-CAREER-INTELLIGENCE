@@ -1,13 +1,18 @@
-import React, { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState } from "react";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 
-import Layout from './components/Layout';
-import Dashboard from './components/Dashboard';
-import ResumeHub from './components/ResumeHub';
-import Applications from './components/Applications';
-import InterviewPrep from './components/InterviewPrep';
-import Analytics from './components/Analytics';
+import Layout from "./components/Layout";
+import Dashboard from "./components/Dashboard";
+import ResumeHub from "./components/ResumeHub";
+import Applications from "./components/Applications";
+import InterviewPrep from "./components/InterviewPrep";
+import Analytics from "./components/Analytics";
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -15,7 +20,7 @@ function App() {
   const handleLogin = (e) => {
     e.preventDefault();
     const email = e.target.elements[0].value;
-    localStorage.setItem('fb_token', `mock_${email}`);
+    localStorage.setItem("fb_token", `mock_${email}`);
     setIsLoggedIn(true);
   };
 
@@ -27,7 +32,9 @@ function App() {
     return (
       <div className="min-h-screen bg-[#0A0A0A] text-[#888888] flex flex-col font-sans selection:bg-[#333333] selection:text-white">
         <nav className="w-full border-b border-[#222222] p-8 flex justify-between items-center">
-          <span className="text-xl font-bold tracking-tighter text-white font-serif">PlaceIQ</span>
+          <span className="text-xl font-bold tracking-tighter text-white font-serif">
+            PlaceIQ
+          </span>
           <button className="text-[10px] tracking-widest uppercase text-[#888888] hover:text-white transition-colors">
             Contact Support
           </button>
@@ -44,14 +51,20 @@ function App() {
               className="w-full max-w-md mx-auto my-auto mt-24"
             >
               <div className="mb-16">
-                <h1 className="text-5xl font-serif text-white mb-4">Authenticate</h1>
-                <p className="text-[10px] tracking-widest uppercase text-[#888888]">Secure Access Portal</p>
+                <h1 className="text-5xl font-serif text-white mb-4">
+                  Authenticate
+                </h1>
+                <p className="text-[10px] tracking-widest uppercase text-[#888888]">
+                  Secure Access Portal
+                </p>
               </div>
 
               <form onSubmit={handleLogin} className="space-y-8">
                 <div className="space-y-6">
                   <div>
-                    <label className="block text-[10px] tracking-widest uppercase text-[#888888] mb-2">University Email</label>
+                    <label className="block text-[10px] tracking-widest uppercase text-[#888888] mb-2">
+                      University Email
+                    </label>
                     <input
                       type="email"
                       required
@@ -59,7 +72,9 @@ function App() {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] tracking-widest uppercase text-[#888888] mb-2">Passkey</label>
+                    <label className="block text-[10px] tracking-widest uppercase text-[#888888] mb-2">
+                      Passkey
+                    </label>
                     <input
                       type="password"
                       required
@@ -68,7 +83,7 @@ function App() {
                   </div>
                 </div>
 
-                <button 
+                <button
                   type="submit"
                   className="w-full bg-white text-black text-[10px] tracking-widest uppercase font-bold py-5 rounded-none hover:bg-gray-200 transition-colors"
                 >
