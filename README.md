@@ -1,101 +1,117 @@
 <div align="center">
-  <h1>Nexus Career Intelligence</h1>
-  <p><em>An autonomous multi-agent copilot that transforms the campus placement workflow into a command center featuring AI match scoring, automated cover letter synthesis, and simulated interview coaching.</em></p>
+  <img src="./client/public/favicon.svg" alt="Nexus Hexagon" width="80" height="80" />
+  <h1>NEXUS CAREER INTELLIGENCE</h1>
+  <p><em>An Enterprise-Grade, Autonomous AI Swarm Architecture for Predictive Career Matching & Interview Synthesis</em></p>
   
-  [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-  [![React](https://img.shields.io/badge/React-18-blue.svg)](https://reactjs.org/)
-  [![Node.js](https://img.shields.io/badge/Node.js-18-green.svg)](https://nodejs.org/)
-  [![FastAPI](https://img.shields.io/badge/FastAPI-0.100-009688.svg)](https://fastapi.tiangolo.com/)
-  [![Status](https://img.shields.io/badge/Status-Active-success.svg)]()
+  [![License: MIT](https://img.shields.io/badge/License-MIT-F59E0B.svg)](#)
+  [![Architecture](https://img.shields.io/badge/Architecture-Microservices-0ea5e9.svg)](#)
+  [![AI Layer](https://img.shields.io/badge/Intelligence-LLM_Swarm-8b5cf6.svg)](#)
+  [![Deployment](https://img.shields.io/badge/Deployment-Docker_Unified-10b981.svg)](#)
 </div>
 
 ---
 
-## ⚡ Overview
+## ⚡ Executive Summary
 
-**Nexus** is an advanced, autonomous AI-driven career copilot designed specifically for the rigorous demands of campus placements and modern job hunting. 
+**Nexus** is an advanced, distributed multi-agent intelligence system engineered specifically for high-stakes recruitment and placement optimization. 
 
-Rather than manually tweaking resumes or writing boilerplate cover letters, Nexus provides a **cyberpunk-themed Command Center** powered by a swarm of **6 distinct AI Agents**. These agents work collaboratively in the background to parse your uploaded neural profile (resume), extract insights from target roles, identify your vulnerabilities, and auto-generate the materials you need to land the job.
+Moving beyond traditional monolithic wrappers, Nexus implements a **highly decoupled microservice architecture**. It orchestrates a reactive presentation layer, an asynchronous I/O-optimized Node.js routing hub, and a heavy-computation Python AI swarm executing asynchronously over a distributed Redis message queue. 
 
-<div align="center">
-  <img src="https://via.placeholder.com/800x400/111111/D4AF37?text=NEXUS+COMMAND+CENTER+DASHBOARD" alt="Dashboard Preview" />
-</div>
+This repository demonstrates peak engineering standards: utilizing unified Docker containerization, dynamic environment proxying, and scalable NoSQL persistence.
 
-## 🤖 The 6-Agent Swarm Architecture
+---
 
-1. **Resume Analyzer Agent** (`Neural Hub`): Parses your uploaded PDF resumes into structured, high-dimensional JSON data.
-2. **Job Parser Agent** (`Active Targets`): Instantly analyzes raw job descriptions to extract the canonical Job Title, Company Name, and absolute required skills.
-3. **Gap Analysis / Match Agent**: Correlates the output from the Resume Agent and Job Parser to generate a deterministic **Alignment Score** and flags missing required skills as "Vulnerabilities".
-4. **Cover Letter Synthesizer**: Automatically writes a professional, targeted cover letter by fusing your extracted resume data with the job requirements.
-5. **Interview Coach Agent** (`Combat Prep`): Generates highly technical, company-specific interview questions based on your resume vulnerabilities and the job's tech stack.
-6. **Career Analytics Agent** (`Trajectory`): Analyzes your historical application data and provides macro-level feedback on your overall career trajectory.
+## 🏗️ System Architecture & Folder Topology
 
-## ✨ Core Features
+The codebase is strictly organized into decoupled, domain-specific bounded contexts, adhering to the highest standards of senior-level Monorepo engineering.
 
-* **Glassmorphism / Dark Mode UI**: A visually stunning interface heavily inspired by sci-fi command centers.
-* **1-Click AI Generation**: Paste a target job description and instantly receive Match Scores, Cover Letters, and Interview Prep.
-* **Asynchronous LLM Queues**: Uses BullMQ + Redis to handle heavy AI workloads in the background without blocking the UI.
-* **Agent Output Exports**: Download the raw `.txt` output of any agent directly from the dashboard.
-* **Isolated Telemetry**: Multi-tenant database architecture separating user data.
+```text
+NEXUS-CAREER-INTELLIGENCE/
+├── client/                 # Edge Presentation Layer (React 18 + Vite)
+│   ├── src/api/            # Dynamic Axios interceptors with intelligent production routing
+│   ├── src/components/     # Highly modular, stateful functional components
+│   └── index.html          # Entry point
+│
+├── server/                 # Primary Orchestrator (Node.js + Express)
+│   ├── config/             # DB & Queue configuration singletons (MongoDB, Redis, Firebase)
+│   ├── controllers/        # Business logic & request validation
+│   ├── queues/             # BullMQ Redis Producers & asynchronous task offloading
+│   ├── routes/             # REST API definition layer
+│   └── server.js           # Core instantiation & static artifact serving (Unified Deployment)
+│
+├── ai-agents/              # Intelligence Swarm (Python 3.11 + FastAPI)
+│   ├── agents/             # Autonomous LangChain/LLM discrete reasoning modules
+│   ├── main.py             # Uvicorn ASGI server instantiation
+│   └── requirements.txt    # Frozen dependency graph
+│
+├── Dockerfile              # Cross-environment Unified Deployment Manifest
+├── render.yaml             # Infrastructure-as-Code (IaC) Blueprint
+└── package.json            # Global dependency management & concurrently execution scripts
+```
 
-## 🛠️ Tech Stack
+### Architectural Data Flow (The "How")
+1. **The Request:** The user interacts with the React Edge UI (glassmorphism luxury theme). The UI makes an asynchronous HTTP request.
+2. **The Orchestrator:** The Node.js Express server receives the payload. It strictly validates authentication via Firebase Admin SDK.
+3. **The Queue:** Instead of blocking the main thread (which would crash under load), Node.js drops the heavy AI inference task into an in-memory **Redis (BullMQ)** message queue and instantly returns a `202 Accepted` status to the client.
+4. **The Swarm:** The Python FastAPI worker, running continuously on a separate process, detects the new job in Redis. It spins up the necessary AI Agents (using Groq/OpenAI LLMs) to process resumes, synthesize cover letters, or generate interview simulations.
+5. **The Persistence:** The Python worker writes the final output directly to the **MongoDB Atlas (NoSQL)** cluster and marks the job as complete. The React UI, polling the DB, updates in real-time.
 
-* **Frontend**: React (Vite), Framer Motion, Tailwind CSS
-* **Backend API**: Node.js, Express, MongoDB (Mongoose), BullMQ (Redis)
-* **AI Engine**: Python, FastAPI, Groq (Llama-3), OpenAI
-* **Database**: MongoDB Atlas
-* **Authentication**: Firebase Admin SDK
+---
 
-## 🚀 Getting Started
+## 🛠️ Technology Matrix (The "Why")
 
-### Prerequisites
+We selected each layer of the stack based on strict performance and scaling requirements:
 
-Ensure you have the following installed:
-- Node.js (v18+)
-- Python (v3.9+)
-- Redis Server (or Upstash Redis URL)
-- MongoDB Atlas cluster URL
-- Firebase Service Account Key
-- OpenAI or Groq API Key
+| Domain | Technology | Engineering Rationale |
+| :--- | :--- | :--- |
+| **Frontend** | React + Vite | React's virtual DOM prevents full-page reloads, essential for a fluid, app-like experience. Vite replaces legacy Webpack for near-instant HMR (Hot Module Replacement) during development. |
+| **Backend API** | Node.js + Express | Node's Event Loop is unmatched for handling thousands of concurrent, I/O-bound network requests and managing connection pools to Redis and MongoDB. |
+| **Intelligence** | Python + FastAPI | Python possesses the richest ecosystem for AI/ML (LangChain, Transformers). FastAPI provides lightning-fast ASGI performance with strict Pydantic type validation. |
+| **Database** | MongoDB Atlas | Career data (resumes, unpredictable JSON arrays of skills) is inherently unstructured. NoSQL provides the schema flexibility SQL lacks. |
+| **Message Broker** | Upstash Redis | Guarantees delivery of AI tasks. Prevents the Node.js API from bottlenecking during high-latency LLM inference calls. |
+| **Deployment** | Docker & Render | A bespoke `Dockerfile` packages all three environments (React, Node, Python) into a single, unified container running on Render's free tier, bypassing typical cloud limitations. |
 
-### Local Installation
+---
 
-1. **Clone the repository**
+## 🚀 Deployment Operations (DevOps)
+
+### 1-Click Automated Cloud Deployment
+The repository contains a declarative `render.yaml` Blueprint. This completely automates the CI/CD pipeline.
+
+1. Connect this repository to [Render.com](https://render.com).
+2. Select **New Blueprint**.
+3. Input your production Environment Variables.
+4. The system automatically provisions a unified Docker container and proxies all `/api/v1` traffic internally.
+
+### Local Engineering Environment
+To spin up the entire cluster locally on your development machine:
+
+1. **Clone the matrix:**
    ```bash
-   git clone https://github.com/NallaSumang/Nexus-Career-Intelligence.git
-   cd Nexus-Career-Intelligence
+   git clone https://github.com/NallaSumang/NEXUS-CAREER-INTELLIGENCE.git
+   cd NEXUS-CAREER-INTELLIGENCE
    ```
 
-2. **Install Dependencies**
-   Run the following commands in three separate terminals (or use the root `npm install` if you set up workspaces):
+2. **Hydrate dependencies:**
    ```bash
-   # Terminal 1: Root & Server
-   npm install
-   cd server && npm install
-
-   # Terminal 2: Client
-   cd client && npm install
-
-   # Terminal 3: AI Agents (Python)
-   cd ai-agents
-   pip install -r requirements.txt
+   npm install                  # Root orchestrator dependencies
+   cd server && npm install     # Node API dependencies
+   cd ../client && npm install  # React Edge UI dependencies
+   cd ../ai-agents && pip install -r requirements.txt # Python Swarm
    ```
 
-3. **Configure Environment Variables**
-   Copy the example environment file and fill in your keys:
-   ```bash
-   cp .env.example .env
-   ```
-   *Make sure to configure MongoDB, Firebase Admin SDK, and your AI Provider keys.*
+3. **Configure the Environment:**
+   Duplicate the `.env.example` to `.env` in the root directory and inject your securely provisioned credentials (MONGO_URI, GROQ_API_KEY, REDIS_URL).
 
-4. **Launch Nexus**
-   From the root directory, run the concurrent dev script:
+4. **Ignite the Cluster:**
    ```bash
+   # From the root directory:
    npm run dev
    ```
-   *This single command will boot the React UI, Node API, and Python Engine simultaneously.*
+   *The `concurrently` package will automatically boot the Node API, Python Engine, and React HMR server simultaneously, color-coding their stdout logs in your terminal.*
 
 ---
+
 <div align="center">
-  <b>Designed and Engineered by Sumang</b>
+  <i>Engineered for peak performance, extreme scalability, and uncompromising aesthetics.</i>
 </div>
