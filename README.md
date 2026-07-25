@@ -1,7 +1,7 @@
 <div align="center">
   <img src="./client/public/favicon.svg" alt="Nexus Hexagon" width="80" height="80" />
   <h1>NEXUS CAREER INTELLIGENCE</h1>
-  <p><em>An Enterprise-Grade, Autonomous AI Swarm Architecture for Predictive Career Matching & Interview Synthesis</em></p>
+  <p><em>An Enterprise-Grade, Autonomous AI Swarm Architecture for Predictive Career Matching & Interview Synthesis (Sumang's Signature Edition)</em></p>
   
   [![License: MIT](https://img.shields.io/badge/License-MIT-F59E0B.svg)](#)
   [![Architecture](https://img.shields.io/badge/Architecture-Microservices-0ea5e9.svg)](#)
