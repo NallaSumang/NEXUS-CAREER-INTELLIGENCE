@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: nexus-ai
+    env: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: MONGO_URI
+        sync: false
+      - key: UPSTASH_REDIS_REST_URL
+        sync: false
+      - key: UPSTASH_REDIS_REST_TOKEN
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
