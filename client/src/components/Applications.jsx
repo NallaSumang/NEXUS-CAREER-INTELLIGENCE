@@ -276,18 +276,12 @@ export default function Applications() {
             )}
 
             {/* ── Action buttons always visible for selected application ── */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-6 border-t border-[#222222]">
+            <div className="pt-6 border-t border-[#222222]">
               <button
                 onClick={() => handleGenerateCoverLetter(activeApplication._id)}
-                className="border border-white text-white text-[10px] tracking-widest uppercase font-bold py-4 rounded-none hover:bg-white hover:text-black transition-colors"
+                className="w-full border border-white text-white text-[10px] tracking-widest uppercase font-bold py-4 rounded-none hover:bg-white hover:text-black transition-colors"
               >
                 Synthesize Cover Letter
-              </button>
-              <button
-                onClick={() => handleGenerateInterviewPrep(activeApplication._id)}
-                className="border border-white text-white text-[10px] tracking-widest uppercase font-bold py-4 rounded-none hover:bg-white hover:text-black transition-colors"
-              >
-                Generate Interview Prep
               </button>
             </div>
           </div>
