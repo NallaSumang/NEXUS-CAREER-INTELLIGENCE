@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useLocation } from "react-router-dom";
 import {
@@ -285,7 +285,7 @@ export default function Applications() {
               </button>
               <button
                 onClick={() => handleGenerateInterviewPrep(activeApplication._id)}
-                className="border border-[#555555] text-[#888888] text-[10px] tracking-widest uppercase font-bold py-4 rounded-none hover:border-white hover:text-white transition-colors"
+                className="border border-white text-white text-[10px] tracking-widest uppercase font-bold py-4 rounded-none hover:bg-white hover:text-black transition-colors"
               >
                 Generate Interview Prep
               </button>
