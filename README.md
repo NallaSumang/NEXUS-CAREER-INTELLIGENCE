@@ -13,7 +13,6 @@
 
 ---
 
-## What This Is
 
 Nexus is a full-stack career tool built for B.Tech students navigating campus placement season. Upload your resume, paste a job description, and the system scores your fit, identifies missing skills, drafts a cover letter, and generates interview questions — all asynchronously so the UI never blocks.
 
