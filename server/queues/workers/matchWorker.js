@@ -197,7 +197,9 @@ const matchWorker = new Worker(
   },
   {
     connection: redisConnection,
-    concurrency: 3,
+    // Free-tier (0.1 vCPU / 512MB): concurrency > 1 causes resource starvation.
+    // Each job makes a 60s HTTP call to Python + DB writes. Keep at 1.
+    concurrency: 1,
   },
 );
 
@@ -207,6 +209,13 @@ matchWorker.on("completed", (job) => {
 
 matchWorker.on("failed", (job, err) => {
   console.error(`❌ Job [${job?.name}] ${job?.id} failed: ${err.message}`);
+});
+
+// Graceful shutdown: let the current job finish before the container dies
+process.on("SIGTERM", async () => {
+  console.log("[matchWorker] SIGTERM — closing worker gracefully...");
+  await matchWorker.close();
+  console.log("[matchWorker] closed.");
 });
 
 export default matchWorker;

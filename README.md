@@ -1,117 +1,284 @@
-<div align="center">
-  <img src="./client/public/favicon.svg" alt="Nexus Hexagon" width="80" height="80" />
+﻿<div align="center">
+  <img src="./client/public/favicon.svg" alt="Nexus Logo" width="80" height="80" />
   <h1>NEXUS CAREER INTELLIGENCE</h1>
-  <p><em>An Enterprise-Grade, Autonomous AI Swarm Architecture for Predictive Career Matching & Interview Synthesis (Sumang's Signature Edition)</em></p>
-  
+  <p><em>An AI-powered campus placement copilot — resume parsing, job matching, cover letters &amp; interview prep, all in one async workflow.</em></p>
+
   [![License: MIT](https://img.shields.io/badge/License-MIT-F59E0B.svg)](#)
-  [![Architecture](https://img.shields.io/badge/Architecture-Microservices-0ea5e9.svg)](#)
-  [![AI Layer](https://img.shields.io/badge/Intelligence-LLM_Swarm-8b5cf6.svg)](#)
-  [![Deployment](https://img.shields.io/badge/Deployment-Docker_Unified-10b981.svg)](#)
+  [![Node.js](https://img.shields.io/badge/Node.js-20.x-339933.svg?logo=node.js)](#)
+  [![Python](https://img.shields.io/badge/Python-3.11-3776AB.svg?logo=python)](#)
+  [![React](https://img.shields.io/badge/React-18-61DAFB.svg?logo=react)](#)
+  [![FastAPI](https://img.shields.io/badge/FastAPI-0.110-009688.svg?logo=fastapi)](#)
+  [![Live Demo](https://img.shields.io/badge/Live-nexus--ai--vqxe.onrender.com-8b5cf6.svg)](https://nexus-ai-vqxe.onrender.com)
 </div>
 
 ---
 
-## ⚡ Executive Summary
+## What This Is
 
-**Nexus** is an advanced, distributed multi-agent intelligence system engineered specifically for high-stakes recruitment and placement optimization. 
+Nexus is a full-stack career tool built for B.Tech students navigating campus placement season. Upload your resume, paste a job description, and the system scores your fit, identifies missing skills, drafts a cover letter, and generates interview questions — all asynchronously so the UI never blocks.
 
-Moving beyond traditional monolithic wrappers, Nexus implements a **highly decoupled microservice architecture**. It orchestrates a reactive presentation layer, an asynchronous I/O-optimized Node.js routing hub, and a heavy-computation Python AI swarm executing asynchronously over a distributed Redis message queue. 
-
-This repository demonstrates peak engineering standards: utilizing unified Docker containerization, dynamic environment proxying, and scalable NoSQL persistence.
+**Core features:**
+- Parses PDF resumes via MongoDB GridFS + `pdf-parse`, sends extracted text to an LLM for structured analysis
+- Scores resume-to-job match using OpenAI / Groq / Gemini (switchable via `AI_PROVIDER` env var)
+- Generates tailored cover letters and interview question sets
+- Tracks all applications, match scores, and full AI call history in MongoDB
+- Offloads every heavy AI task to a BullMQ queue (Upstash Redis) so the Express API returns instantly
 
 ---
 
-## 🏗️ System Architecture & Folder Topology
+## Architecture
 
-The codebase is strictly organized into decoupled, domain-specific bounded contexts, adhering to the highest standards of senior-level Monorepo engineering.
+This is a **monorepo** deployed as a **single Docker container** on Render's free tier. Node.js and Python run as two sibling processes under `concurrently`. The separation is **logical, not operational** — both share the same vCPU and RAM.
+
+```
++----------------------------------------------------------+
+|                    Docker Container                      |
+|                 (Render Free Tier)                       |
+|                                                          |
+|  +----------------------+    +------------------------+  |
+|  |   Node.js :5000      |    |  Python Uvicorn :8000  |  |
+|  |   (Express API)      |    |  (FastAPI AI Layer)    |  |
+|  |                      |    |                        |  |
+|  |  +----------------+  |    |  POST /agents/         |  |
+|  |  | BullMQ Workers |--+--->|    parse-resume        |  |
+|  |  | (concurrency:1)|  |HTTP|    compute-match       |  |
+|  |  +----------------+  |    |    cover-letter        |  |
+|  |          ^           |    |    interview-prep      |  |
+|  |  +-------+-------+   |    |    analytics           |  |
+|  |  | BullMQ        |   |    +------------------------+  |
+|  |  | Producers     |   |                                 |
+|  +--+---------------+---+                                 |
+|          |                                                 |
+|          v                                                 |
+|   +--------------+                                         |
+|   | Upstash Redis|  <- Job Queue                          |
+|   +--------------+                                         |
++----------------------------------------------------------+
+         |                           |
+         v                           v
+   MongoDB Atlas              OpenAI / Groq / Gemini
+   (NoSQL + GridFS)           (External LLM providers)
+```
+
+### Real Data Flow
+
+1. **Resume upload** — Express streams PDF to MongoDB GridFS, queues `parse-resume` in Redis, returns immediately
+2. **resumeWorker.js** picks up job, downloads PDF from GridFS, extracts text via `pdf-parse`, `POST :8000/agents/parse-resume`
+3. **FastAPI** calls the configured LLM, returns a typed Pydantic response
+4. **Worker** writes parsed JSON back to `Resume` document (`parseStatus: "done"`)
+5. **User triggers match** — Express queues `compute-match`, returns `{ jobStatus: "queued" }` instantly
+6. **matchWorker.js** picks it up, fetches Resume + Job from MongoDB, `POST :8000/agents/compute-match`, writes `matchScore` to `Application`
+7. **React polls** `/api/v1/resumes/:id/status` until done, renders results
+
+> **Python never touches Redis.** It is a pure stateless HTTP service. Node BullMQ workers consume queue jobs and call Python over localhost HTTP.
+
+---
+
+## Tech Stack
+
+| Layer | Technology | Why |
+| :--- | :--- | :--- |
+| **Frontend** | React 18 + Vite | Fast HMR in dev; built static files served by Express in production |
+| **Backend API** | Node.js 20 + Express | Non-blocking event loop handles concurrent I/O: auth, DB queries, queue producers |
+| **AI Layer** | Python 3.11 + FastAPI | Native LLM SDK ecosystem; Pydantic for strict structured output validation |
+| **Async Queue** | BullMQ + Upstash Redis | Decouples HTTP response from 30-60s LLM processing; exponential retry on failure |
+| **Database** | MongoDB Atlas + GridFS | Schemaless JSON for career data; GridFS for binary PDF blob storage |
+| **Auth** | Firebase Auth + Admin SDK | Client-side token issuance; server-side JWT verification on every protected route |
+| **Deployment** | Docker + Render | Single Dockerfile installs Node + Python; `concurrently` runs both in one container |
+| **LLM Providers** | OpenAI / Groq / Gemini | Switchable via `AI_PROVIDER` env var; all calls have 55s timeouts |
+
+---
+
+## Project Structure
 
 ```text
 NEXUS-CAREER-INTELLIGENCE/
-├── client/                 # Edge Presentation Layer (React 18 + Vite)
-│   ├── src/api/            # Dynamic Axios interceptors with intelligent production routing
-│   ├── src/components/     # Highly modular, stateful functional components
-│   └── index.html          # Entry point
-│
-├── server/                 # Primary Orchestrator (Node.js + Express)
-│   ├── config/             # DB & Queue configuration singletons (MongoDB, Redis, Firebase)
-│   ├── controllers/        # Business logic & request validation
-│   ├── queues/             # BullMQ Redis Producers & asynchronous task offloading
-│   ├── routes/             # REST API definition layer
-│   └── server.js           # Core instantiation & static artifact serving (Unified Deployment)
-│
-├── ai-agents/              # Intelligence Swarm (Python 3.11 + FastAPI)
-│   ├── agents/             # Autonomous LangChain/LLM discrete reasoning modules
-│   ├── main.py             # Uvicorn ASGI server instantiation
-│   └── requirements.txt    # Frozen dependency graph
-│
-├── Dockerfile              # Cross-environment Unified Deployment Manifest
-├── render.yaml             # Infrastructure-as-Code (IaC) Blueprint
-└── package.json            # Global dependency management & concurrently execution scripts
+|-- client/                       # React 18 + Vite frontend
+|   |-- src/
+|   |   |-- api/                  # Axios instance with auth header injection
+|   |   |-- components/           # Feature components (Dashboard, ResumeUpload, etc.)
+|   |   |-- hooks/                # Custom React hooks
+|   |   `-- App.jsx
+|   `-- vite.config.js
+|
+|-- server/                       # Express API + BullMQ workers
+|   |-- config/
+|   |   |-- db.js                 # MongoDB connection with cached singleton
+|   |   |-- redis.js              # ioredis with env-aware retry strategy
+|   |   `-- firebase.js           # Firebase Admin SDK
+|   |-- middleware/
+|   |   |-- auth.js               # Firebase JWT verification
+|   |   `-- errorHandler.js
+|   |-- models/
+|   |   |-- Resume.js             # Resume + GridFS ref + parseStatus
+|   |   |-- Job.js                # Job description + parsedRequirements
+|   |   |-- Application.js        # User<->Job<->Resume + matchScore
+|   |   |-- AIHistory.js          # Audit log of every LLM call
+|   |   `-- InterviewNote.js      # Generated interview questions
+|   |-- queues/
+|   |   |-- aiQueue.js            # BullMQ producer (ai-jobs queue)
+|   |   |-- resumeQueue.js        # BullMQ producer (resume-processing queue)
+|   |   `-- workers/
+|   |       |-- matchWorker.js    # Handles: match, cover-letter, interview-prep, analytics
+|   |       `-- resumeWorker.js   # Handles: PDF parse -> Python AI
+|   |-- routes/
+|   |   |-- auth.routes.js
+|   |   |-- resume.routes.js
+|   |   |-- ai.routes.js
+|   |   `-- application.routes.js
+|   `-- server.js                 # App init (singleton guard) + static serving
+|
+|-- ai-agents/                    # FastAPI AI layer
+|   |-- agents/
+|   |   |-- resume_agent.py       # POST /agents/parse-resume
+|   |   |-- job_parser_agent.py   # POST /agents/parse-job
+|   |   |-- match_agent.py        # POST /agents/compute-match
+|   |   |-- cover_letter_agent.py # POST /agents/generate-cover-letter
+|   |   |-- interview_coach_agent.py
+|   |   `-- analytics_agent.py
+|   |-- prompts/                  # Prompt templates (.txt)
+|   |-- config.py                 # Unified call_llm() with 55s timeout
+|   |-- models.py                 # Pydantic request/response schemas
+|   |-- main.py                   # FastAPI app + CORS + router registration
+|   `-- requirements.txt
+|
+|-- Dockerfile                    # Installs Node + Python; runs via concurrently
+|-- render.yaml                   # Render Blueprint - single Docker web service
+|-- package.json                  # Root: concurrently dev scripts
+`-- .env.example                  # All required env vars documented
 ```
 
-### Architectural Data Flow
-1. **The Request:** The user interacts with the React Edge UI (glassmorphism luxury theme). The UI makes an asynchronous HTTP request.
-2. **The Orchestrator:** The Node.js Express server receives the payload. It strictly validates authentication via Firebase Admin SDK.
-3. **The Queue:** Instead of blocking the main thread (which would crash under load), Node.js drops the heavy AI inference task into an in-memory **Redis (BullMQ)** message queue and instantly returns a `202 Accepted` status to the client.
-4. **The Swarm:** The Python FastAPI worker, running continuously on a separate process, detects the new job in Redis. It spins up the necessary AI Agents (using Groq/OpenAI LLMs) to process resumes, synthesize cover letters, or generate interview simulations.
-5. **The Persistence:** The Python worker writes the final output directly to the **MongoDB Atlas (NoSQL)** cluster and marks the job as complete. The React UI, polling the DB, updates in real-time.
+---
+
+## Environment Variables
+
+Copy `.env.example` to `.env` in the root directory:
+
+```env
+# MongoDB Atlas
+MONGO_URI=mongodb+srv://<username>:<password>@cluster0.mongodb.net/cpc
+
+# Firebase Admin SDK
+FIREBASE_PROJECT_ID=your-project-id
+FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xxxxx@your-project.iam.gserviceaccount.com
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+
+# AI Provider - pick ONE and set the matching key
+AI_PROVIDER=groq               # options: openai | groq | gemini
+OPENAI_API_KEY=sk-proj-...
+GROQ_API_KEY=gsk_...
+GEMINI_API_KEY=                # only needed if AI_PROVIDER=gemini
+
+# Redis - required in production for the BullMQ queue
+REDIS_URL=redis://localhost:6379   # use your Upstash Redis URL in production
+
+# Internal service URLs (do not change for local dev)
+AI_SERVICE_URL=http://localhost:8000
+CLIENT_URL=http://localhost:5173
+```
+
+> If `REDIS_URL` is unreachable, all AI routes return `503 QUEUE_UNAVAILABLE`. Resume upload has an inline fallback that calls Python directly without the queue.
 
 ---
 
-## 🛠️ Technology Matrix
+## Local Development
 
-We selected each layer of the stack based on strict performance and scaling requirements:
+**Prerequisites:** Node.js 20+, Python 3.11+, pip
 
-| Domain | Technology | Engineering Rationale |
+```bash
+# 1. Clone
+git clone https://github.com/NallaSumang/NEXUS-CAREER-INTELLIGENCE.git
+cd NEXUS-CAREER-INTELLIGENCE
+
+# 2. Install all dependencies
+npm install
+cd server && npm install && cd ..
+cd client && npm install && cd ..
+cd ai-agents && pip install -r requirements.txt && cd ..
+
+# 3. Configure environment
+cp .env.example .env
+# Edit .env - at minimum set MONGO_URI, AI_PROVIDER, and matching API key
+
+# 4. Start all three processes
+npm run dev
+```
+
+The `concurrently` package boots all three with colour-coded logs:
+- **API** (blue) - Express on `:5000`
+- **AI** (yellow) - Uvicorn FastAPI on `:8000`
+- **WEB** (green) - Vite dev server on `:5173`
+
+---
+
+## Deployment (Render)
+
+```bash
+# Push to GitHub - Render auto-redeploys
+git add .
+git commit -m "your message"
+git push origin main
+```
+
+**First-time setup:**
+1. Go to [Render.com](https://render.com) -> New -> Blueprint
+2. Connect this GitHub repo
+3. Set all environment variables in the Render dashboard
+4. Render builds the Docker image and deploys both Node + Python in one container
+
+> **Free tier note:** Container runs on ~0.1 vCPU / 512MB RAM. Workers are set to `concurrency: 1` to prevent resource starvation. Cold starts take 30-60s after inactivity.
+
+---
+
+## Stability Fixes Applied
+
+| Fix | File | Bug -> Resolution |
 | :--- | :--- | :--- |
-| **Frontend** | React + Vite | React's virtual DOM prevents full-page reloads, essential for a fluid, app-like experience. Vite replaces legacy Webpack for near-instant HMR (Hot Module Replacement) during development. |
-| **Backend API** | Node.js + Express | Node's Event Loop is unmatched for handling thousands of concurrent, I/O-bound network requests and managing connection pools to Redis and MongoDB. |
-| **Intelligence** | Python + FastAPI | Python possesses the richest ecosystem for AI/ML (LangChain, Transformers). FastAPI provides lightning-fast ASGI performance with strict Pydantic type validation. |
-| **Database** | MongoDB Atlas | Career data (resumes, unpredictable JSON arrays of skills) is inherently unstructured. NoSQL provides the schema flexibility SQL lacks. |
-| **Message Broker** | Upstash Redis | Guarantees delivery of AI tasks. Prevents the Node.js API from bottlenecking during high-latency LLM inference calls. |
-| **Deployment** | Docker & Render | A bespoke `Dockerfile` packages all three environments (React, Node, Python) into a single, unified container running on Render's free tier, bypassing typical cloud limitations. |
+| Singleton guard | `server/server.js` | `initializeApp()` ran on every request — MongoDB connection storm. Now runs exactly once. |
+| Graceful shutdown | `server/server.js` | No SIGTERM handler — Render killed process mid-write. Added handlers to drain MongoDB cleanly. |
+| Redis retry | `server/config/redis.js` | `retryStrategy: () => null` permanently gave up after first failure. Now retries 10x with exponential backoff in production. |
+| Worker concurrency | `matchWorker.js`, `resumeWorker.js` | `concurrency: 3` x 2 workers = 6 simultaneous 60s LLM calls on 0.1 vCPU. Set to `1` each. |
+| Worker shutdown | Both workers | Added `SIGTERM` handler so in-flight jobs complete before container exit. |
+| Silent AI failures | `server/routes/ai.routes.js` | Redis down returned fake `{ jobStatus: "queued" }` — users waited forever. Now returns `503 QUEUE_UNAVAILABLE`. |
+| Invalid CORS | `ai-agents/main.py` | `allow_origins=["*"]` + `allow_credentials=True` is invalid per RFC 6454. Fixed: `credentials=False`. |
+| LLM timeouts | `ai-agents/config.py` | No timeout on LLM calls — one hung call froze entire Uvicorn process. Added 55s timeout on all providers. |
 
 ---
 
-## 🚀 Deployment Operations (DevOps)
+## Data Models
 
-### 1-Click Automated Cloud Deployment
-The repository contains a declarative `render.yaml` Blueprint. This completely automates the CI/CD pipeline.
+| Model | Key Fields |
+| :--- | :--- |
+| `Resume` | `userId`, `gridFsId`, `originalFilename`, `parseStatus`, `parsedJson` |
+| `Job` | `title`, `company`, `description`, `parsedRequirements`, `postedBy` |
+| `Application` | `userId`, `resumeId`, `jobId`, `status`, `matchScore`, `missingSkills`, `coverLetterText` |
+| `AIHistory` | `userId`, `agentType`, `promptSnapshot`, `responseSnapshot`, `tokensUsed`, `durationMs`, `success` |
+| `InterviewNote` | `userId`, `applicationId`, `generatedQuestions[]`, `userAnswers[]` |
 
-1. Connect this repository to [Render.com](https://render.com).
-2. Select **New Blueprint**.
-3. Input your production Environment Variables.
-4. The system automatically provisions a unified Docker container and proxies all `/api/v1` traffic internally.
+---
 
-### Local Engineering Environment
-To spin up the entire cluster locally on your development machine:
+## API Reference
 
-1. **Clone the matrix:**
-   ```bash
-   git clone https://github.com/NallaSumang/NEXUS-CAREER-INTELLIGENCE.git
-   cd NEXUS-CAREER-INTELLIGENCE
-   ```
+All endpoints require `Authorization: Bearer <firebase-id-token>`.
 
-2. **Hydrate dependencies:**
-   ```bash
-   npm install                  # Root orchestrator dependencies
-   cd server && npm install     # Node API dependencies
-   cd ../client && npm install  # React Edge UI dependencies
-   cd ../ai-agents && pip install -r requirements.txt # Python Swarm
-   ```
-
-3. **Configure the Environment:**
-   Duplicate the `.env.example` to `.env` in the root directory and inject your securely provisioned credentials (MONGO_URI, GROQ_API_KEY, REDIS_URL).
-
-4. **Ignite the Cluster:**
-   ```bash
-   # From the root directory:
-   npm run dev
-   ```
-   *The `concurrently` package will automatically boot the Node API, Python Engine, and React HMR server simultaneously, color-coding their stdout logs in your terminal.*
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `POST` | `/api/v1/auth/register` | Register user |
+| `POST` | `/api/v1/auth/login` | Login |
+| `POST` | `/api/v1/resumes/upload` | Upload PDF (multipart) -> queues AI parse |
+| `GET` | `/api/v1/resumes/` | List user's resumes |
+| `GET` | `/api/v1/resumes/:id/status` | Poll parse status + result |
+| `DELETE` | `/api/v1/resumes/:id` | Delete resume + GridFS file |
+| `POST` | `/api/v1/ai/match` | Queue resume-job match score |
+| `POST` | `/api/v1/ai/cover-letter` | Queue cover letter generation |
+| `POST` | `/api/v1/ai/interview-prep` | Queue interview questions |
+| `GET` | `/api/v1/ai/status/:jobId` | Poll async job status |
+| `POST` | `/api/v1/ai/analytics` | Queue career analytics |
+| `GET` | `/api/v1/ai/analytics` | Retrieve latest analytics result |
+| `GET/POST` | `/api/v1/applications/` | Manage job applications |
 
 ---
 
 <div align="center">
-  <i>Engineered for peak performance, extreme scalability, and uncompromising aesthetics.</i>
+  <i>Built by Sumang Nalla — full-stack AI integration project demonstrating async job processing, multi-provider LLM abstraction, and production deployment on Render.</i>
 </div>

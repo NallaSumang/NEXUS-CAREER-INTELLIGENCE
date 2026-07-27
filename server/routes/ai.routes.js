@@ -7,6 +7,20 @@ import Application from "../models/Application.js";
 
 const router = express.Router();
 
+// ── Helper: wraps every aiQueue.add() call so failures are honest, not silent ─
+const enqueueOrFail = async (res, addFn) => {
+  try {
+    return await addFn();
+  } catch (err) {
+    console.error("❌ Redis/BullMQ unavailable:", err.message);
+    res.status(503).json({
+      error: "AI processing service is temporarily unavailable. Please try again in a moment.",
+      code: "QUEUE_UNAVAILABLE",
+    });
+    return null; // signals caller to stop
+  }
+};
+
 router.post("/match", verifyToken, async (req, res) => {
   try {
     const { resumeId, jobId, jobDescription, jobTitle, companyName } = req.body;
@@ -48,25 +62,23 @@ router.post("/match", verifyToken, async (req, res) => {
       await application.save();
     }
 
-    let queueJobId = `mock_job_${Date.now()}`;
-    try {
-      const jobReq = await aiQueue.add("compute-match", {
+    const jobReq = await enqueueOrFail(res, () =>
+      aiQueue.add("compute-match", {
         resumeId,
         jobId: finalJobId,
         userId: req.user._id,
         applicationId: application._id,
-      });
-      queueJobId = jobReq.id;
-    } catch (e) {
-      console.log("Redis down. Mocking compute-match.");
-    }
+      })
+    );
+    if (!jobReq) return; // 503 already sent
 
     res.json({
       applicationId: application._id,
       jobStatus: "queued",
-      queueJobId,
+      queueJobId: jobReq.id,
     });
   } catch (error) {
+    console.error("❌ /match route error:", error.message);
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -84,19 +96,17 @@ router.post("/cover-letter", verifyToken, async (req, res) => {
     )
       return res.status(403).json({ error: "Forbidden" });
 
-    let queueJobId = `mock_job_${Date.now()}`;
-    try {
-      const jobReq = await aiQueue.add("gen-cover-letter", {
+    const jobReq = await enqueueOrFail(res, () =>
+      aiQueue.add("gen-cover-letter", {
         applicationId,
         userId: req.user._id,
-      });
-      queueJobId = jobReq.id;
-    } catch (e) {
-      console.log("Redis down. Mocking gen-cover-letter.");
-    }
+      })
+    );
+    if (!jobReq) return; // 503 already sent
 
-    res.json({ applicationId, jobStatus: "queued", queueJobId });
+    res.json({ applicationId, jobStatus: "queued", queueJobId: jobReq.id });
   } catch (error) {
+    console.error("❌ /cover-letter route error:", error.message);
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -114,48 +124,30 @@ router.post("/interview-prep", verifyToken, async (req, res) => {
     )
       return res.status(403).json({ error: "Forbidden" });
 
-    let queueJobId = `mock_job_${Date.now()}`;
-    try {
-      const jobReq = await aiQueue.add("interview-prep", {
+    const jobReq = await enqueueOrFail(res, () =>
+      aiQueue.add("interview-prep", {
         applicationId,
         userId: req.user._id,
-      });
-      queueJobId = jobReq.id;
-    } catch (e) {
-      console.log("Redis down. Mocking interview-prep.");
-    }
+      })
+    );
+    if (!jobReq) return; // 503 already sent
 
-    res.json({ applicationId, jobStatus: "queued", queueJobId });
+    res.json({ applicationId, jobStatus: "queued", queueJobId: jobReq.id });
   } catch (error) {
+    console.error("❌ /interview-prep route error:", error.message);
     res.status(500).json({ error: "Server error" });
   }
 });
 
 router.get("/status/:jobId", verifyToken, async (req, res) => {
   try {
-    if (req.params.jobId.startsWith("mock_job_")) {
-      const elapsed = Date.now() - parseInt(req.params.jobId.split("_")[2]);
-      if (elapsed < 4000) {
-        return res.json({
-          state: "active",
-          progress: 50,
-          result: null,
-          failedReason: null,
-        });
-      }
-      return res.json({
-        state: "completed",
-        progress: 100,
-        result: { mocked: true },
-        failedReason: null,
-      });
-    }
+    let job = await aiQueue.getJob(req.params.jobId).catch(() => null);
 
-    let job = await aiQueue.getJob(req.params.jobId);
     if (!job) {
       const { resumeQueue } = await import("../queues/resumeQueue.js");
-      job = await resumeQueue.getJob(req.params.jobId);
+      job = await resumeQueue.getJob(req.params.jobId).catch(() => null);
     }
+
     if (!job) return res.status(404).json({ error: "Job not found" });
 
     const state = await job.getState();
@@ -165,7 +157,11 @@ router.get("/status/:jobId", verifyToken, async (req, res) => {
 
     res.json({ state, progress, result, failedReason });
   } catch (error) {
-    res.status(500).json({ error: "Server error" });
+    console.error("❌ /status route error:", error.message);
+    res.status(503).json({
+      error: "Unable to fetch job status — queue service may be unavailable.",
+      code: "QUEUE_UNAVAILABLE",
+    });
   }
 });
 
@@ -177,19 +173,17 @@ router.post("/analytics", verifyToken, async (req, res) => {
     if (applications.length === 0)
       return res.status(400).json({ error: "Not enough data to analyze." });
 
-    let queueJobId = `mock_job_${Date.now()}`;
-    try {
-      const jobReq = await aiQueue.add("analytics", {
+    const jobReq = await enqueueOrFail(res, () =>
+      aiQueue.add("analytics", {
         userId: req.user._id,
         applicationHistory: applications,
-      });
-      queueJobId = jobReq.id;
-    } catch (e) {
-      console.log("Redis down. Mocking analytics.");
-    }
+      })
+    );
+    if (!jobReq) return; // 503 already sent
 
-    res.json({ jobStatus: "queued", queueJobId });
+    res.json({ jobStatus: "queued", queueJobId: jobReq.id });
   } catch (error) {
+    console.error("❌ /analytics route error:", error.message);
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -203,6 +197,7 @@ router.get("/analytics", verifyToken, async (req, res) => {
     }).sort({ createdAt: -1 });
     res.json(analytics ? JSON.parse(analytics.responseSnapshot) : null);
   } catch (error) {
+    console.error("❌ GET /analytics route error:", error.message);
     res.status(500).json({ error: "Server error" });
   }
 });

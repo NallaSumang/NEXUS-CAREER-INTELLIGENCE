@@ -29,7 +29,7 @@ async def call_llm(prompt: str, json_mode: bool = True) -> str:
     if AI_PROVIDER == "openai":
         from openai import AsyncOpenAI
 
-        client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"), timeout=55.0)
         response = await client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
@@ -41,7 +41,8 @@ async def call_llm(prompt: str, json_mode: bool = True) -> str:
         from openai import AsyncOpenAI
 
         client = AsyncOpenAI(
-            api_key=os.getenv("GROQ_API_KEY"), base_url="https://api.groq.com/openai/v1"
+            api_key=os.getenv("GROQ_API_KEY"), base_url="https://api.groq.com/openai/v1",
+            timeout=55.0,
         )
         response = await client.chat.completions.create(
             model="llama-3.3-70b-versatile",
@@ -53,6 +54,7 @@ async def call_llm(prompt: str, json_mode: bool = True) -> str:
 
     else:
         # Gemini fallback
+        import asyncio
         import google.generativeai as genai
 
         genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
@@ -60,7 +62,14 @@ async def call_llm(prompt: str, json_mode: bool = True) -> str:
         generation_config = (
             {"response_mime_type": "application/json"} if json_mode else {}
         )
-        response = model.generate_content(prompt, generation_config=generation_config)
+        # Gemini SDK is sync — run in thread pool with a 55s timeout
+        response = await asyncio.wait_for(
+            asyncio.get_event_loop().run_in_executor(
+                None,
+                lambda: model.generate_content(prompt, generation_config=generation_config),
+            ),
+            timeout=55.0,
+        )
         result = response.text
 
     # Always strip markdown regardless of provider

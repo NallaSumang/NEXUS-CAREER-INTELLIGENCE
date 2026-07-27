@@ -24,72 +24,99 @@ app.use(
 );
 app.use(express.json());
 
-// Initialize middlewares, routes
+// ── Singleton guard: initializeApp() must only run once ──────────────────────
+let _initialized = false;
+let _initPromise = null;
+
 const initializeApp = async () => {
-  // 1. MongoDB Connect
-  try {
-    await connectDB();
-  } catch (err) {
-    console.error("❌ MongoDB failed:", err.message);
-  }
+  if (_initialized) return;
+  if (_initPromise) return _initPromise;
 
-  // 2. Firebase Init
-  try {
-    await import("./config/firebase.js");
-    console.log("✅ Firebase initialized");
-  } catch (err) {
-    console.error("⚠️ Firebase init failed:", err.message);
-  }
-
-  // 3. Routes
-  try {
-    const { default: authRoutes } = await import("./routes/auth.routes.js");
-    const { default: resumeRoutes } = await import("./routes/resume.routes.js");
-    const { default: aiRoutes } = await import("./routes/ai.routes.js");
-    // Add new application routes
-    const { default: applicationRoutes } =
-      await import("./routes/application.routes.js");
-
-    app.use("/api/v1/auth", authRoutes);
-    app.use("/api/v1/resumes", resumeRoutes);
-    app.use("/api/v1/ai", aiRoutes);
-    app.use("/api/v1/applications", applicationRoutes);
-
-    // Serve React frontend statically in production/unified environments
-    const clientDist = path.resolve(__dirname, "../client/dist");
-    app.use(express.static(clientDist));
-    app.get("*", (req, res, next) => {
-      if (req.originalUrl.startsWith("/api")) {
-        return next(); // Let error handler catch API 404s
-      }
-      res.sendFile(path.resolve(clientDist, "index.html"));
-    });
-
-    app.use(errorHandler);
-  } catch (err) {
-    console.error("❌ Failed to load routes:", err.message);
-  }
-
-  // 4. BullMQ Workers (Only if not running on Vercel)
-  if (process.env.VERCEL !== "1") {
+  _initPromise = (async () => {
+    // 1. MongoDB Connect
     try {
-      const { default: redis } = await import("./config/redis.js");
-      if (redis.status === "wait") {
-        await redis.connect();
-      }
-      await import("./queues/workers/resumeWorker.js");
-      await import("./queues/workers/matchWorker.js");
-      console.log("✅ BullMQ workers started");
+      await connectDB();
     } catch (err) {
-      console.warn(
-        "⚠️ Redis unavailable — AI queue workers disabled",
-        err.message,
-      );
+      console.error("❌ MongoDB failed:", err.message);
     }
-  }
+
+    // 2. Firebase Init
+    try {
+      await import("./config/firebase.js");
+      console.log("✅ Firebase initialized");
+    } catch (err) {
+      console.error("⚠️ Firebase init failed:", err.message);
+    }
+
+    // 3. Routes
+    try {
+      const { default: authRoutes } = await import("./routes/auth.routes.js");
+      const { default: resumeRoutes } = await import("./routes/resume.routes.js");
+      const { default: aiRoutes } = await import("./routes/ai.routes.js");
+      const { default: applicationRoutes } =
+        await import("./routes/application.routes.js");
+
+      app.use("/api/v1/auth", authRoutes);
+      app.use("/api/v1/resumes", resumeRoutes);
+      app.use("/api/v1/ai", aiRoutes);
+      app.use("/api/v1/applications", applicationRoutes);
+
+      // Serve React frontend statically in production/unified environments
+      const clientDist = path.resolve(__dirname, "../client/dist");
+      app.use(express.static(clientDist));
+      app.get("*", (req, res, next) => {
+        if (req.originalUrl.startsWith("/api")) {
+          return next(); // Let error handler catch API 404s
+        }
+        res.sendFile(path.resolve(clientDist, "index.html"));
+      });
+
+      app.use(errorHandler);
+    } catch (err) {
+      console.error("❌ Failed to load routes:", err.message);
+    }
+
+    // 4. BullMQ Workers (Only if not running on Vercel)
+    if (process.env.VERCEL !== "1") {
+      try {
+        const { default: redis } = await import("./config/redis.js");
+        if (redis.status === "wait") {
+          await redis.connect();
+        }
+        await import("./queues/workers/resumeWorker.js");
+        await import("./queues/workers/matchWorker.js");
+        console.log("✅ BullMQ workers started");
+      } catch (err) {
+        console.warn(
+          "⚠️ Redis unavailable — AI queue workers disabled",
+          err.message,
+        );
+      }
+    }
+
+    _initialized = true;
+  })();
+
+  return _initPromise;
 };
 
-// Initialize if running as a standalone Express server
+// ── Graceful shutdown — critical on Render free tier (SIGTERM before kill) ───
+const shutdown = async (signal) => {
+  console.log(`\n${signal} received — shutting down gracefully...`);
+  try {
+    const mongoose = await import("mongoose");
+    await mongoose.default.connection.close(false);
+    console.log("✅ MongoDB connection closed cleanly");
+  } catch (e) {
+    console.error("⚠️ MongoDB close error:", e.message);
+  }
+  process.exit(0);
+};
+
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT",  () => shutdown("SIGINT"));
+
+// ── Start server (non-Vercel) ─────────────────────────────────────────────────
 if (process.env.VERCEL !== "1") {
   initializeApp().then(() => {
     app.listen(PORT, () => {
@@ -98,9 +125,8 @@ if (process.env.VERCEL !== "1") {
   });
 }
 
-// Export for serverless (Vercel)
+// Export for serverless (Vercel) — singleton guard ensures DB connects once
 export default async (req, res) => {
-  // Wait for initialisation
   await initializeApp();
   return app(req, res);
 };

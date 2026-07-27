@@ -111,7 +111,9 @@ const resumeWorker = new Worker(
   },
   {
     connection: redisConnection,
-    concurrency: 3,
+    // Free-tier (0.1 vCPU / 512MB): concurrency > 1 causes resource starvation.
+    // PDF extraction + 60s LLM call is CPU/memory intensive. Keep at 1.
+    concurrency: 1,
   },
 );
 
@@ -121,6 +123,13 @@ resumeWorker.on("completed", (job) => {
 
 resumeWorker.on("failed", (job, err) => {
   console.error(`❌ Resume parse job ${job?.id} failed: ${err.message}`);
+});
+
+// Graceful shutdown: let the current job finish before the container dies
+process.on("SIGTERM", async () => {
+  console.log("[resumeWorker] SIGTERM — closing worker gracefully...");
+  await resumeWorker.close();
+  console.log("[resumeWorker] closed.");
 });
 
 export default resumeWorker;

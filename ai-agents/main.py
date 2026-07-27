@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from agents import (
@@ -11,12 +12,17 @@ from agents import (
 
 app = FastAPI(title="AI Microservice")
 
+# This service is only called by the Node.js backend (server-to-server).
+# allow_origins=["*"] + allow_credentials=True is invalid per RFC 6454 and
+# rejected by browsers. Since no browser ever hits this directly, credentials
+# are unnecessary — set to False to be standards-compliant.
+_node_origin = os.getenv("NODE_SERVICE_URL", "http://localhost:5000")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=[_node_origin, "http://localhost:5000", "http://127.0.0.1:5000"],
+    allow_credentials=False,
+    allow_methods=["POST", "GET"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 app.include_router(resume_agent.router, prefix="/agents", tags=["Resume"])

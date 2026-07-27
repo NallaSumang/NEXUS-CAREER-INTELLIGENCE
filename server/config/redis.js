@@ -8,7 +8,9 @@ dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
 import { Redis } from "ioredis";
 
-let redisAvailable = false;
+let _redisReady = false;
+
+const isProduction = process.env.NODE_ENV === "production";
 
 const redisConnection = new Redis(
   process.env.REDIS_URL || "redis://localhost:6379",
@@ -16,19 +18,34 @@ const redisConnection = new Redis(
     maxRetriesPerRequest: null,
     enableReadyCheck: false,
     lazyConnect: true,
-    // Stop reconnecting after first failure — no Redis installed locally
-    retryStrategy: () => null,
+    // In production: retry up to 10 times with exponential backoff (max 10s)
+    // In dev: null = give up immediately so the app still starts without Redis
+    retryStrategy: isProduction
+      ? (times) => {
+          if (times > 10) return null; // give up after 10 attempts
+          return Math.min(times * 500, 10000);
+        }
+      : () => null,
   },
 );
 
-redisConnection.on("error", () => {
-  // Silently swallow — Redis is optional for local dev
+redisConnection.on("error", (err) => {
+  _redisReady = false;
+  if (isProduction) {
+    console.error("❌ Redis error:", err.message);
+  }
+  // Silently swallow in dev — Redis is optional for local development
 });
 
 redisConnection.on("connect", () => {
-  redisAvailable = true;
+  _redisReady = true;
   console.log("✅ Redis connected");
 });
 
-export { redisAvailable };
+redisConnection.on("close", () => {
+  _redisReady = false;
+});
+
+// Expose live status as a function (not a stale boolean snapshot)
+export const isRedisReady = () => _redisReady;
 export default redisConnection;
