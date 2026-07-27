@@ -39,7 +39,8 @@ export default function Analytics() {
 
   const handleDownloadAnalytics = () => {
     if (!analyticsData) return;
-    const content = `Executive Summary:\n${analyticsData.summary}\n\nStrengths:\n- ${(analyticsData.strengths || []).join("\n- ")}\n\nWeaknesses:\n- ${(analyticsData.weaknesses || []).join("\n- ")}\n\nRecommended Actions:\n- ${(analyticsData.recommendedActions || []).join("\n- ")}`;
+    const recs = analyticsData.recommended_actions || analyticsData.recommendedActions || [];
+    const content = `Executive Summary:\n${analyticsData.summary}\n\nStrengths:\n- ${(analyticsData.strengths || []).join("\n- ")}\n\nWeaknesses:\n- ${(analyticsData.weaknesses || []).join("\n- ")}\n\nRecommended Actions:\n- ${recs.join("\n- ")}`;
     const blob = new Blob([content], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");

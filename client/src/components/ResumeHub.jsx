@@ -1,13 +1,23 @@
-import React, { useState } from "react";
+﻿import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { uploadResume } from "../api";
+import { uploadResume, getResumes, deleteResume } from "../api";
 import AIProcessingStatus from "./AIProcessingStatus";
 
 export default function ResumeHub() {
   const [dragActive, setDragActive] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [jobs, setJobs] = useState([]);
-  const [parsedResumes, setParsedResumes] = useState([]);
+  const [resumes, setResumes] = useState([]);
+
+  const fetchResumes = () => {
+    getResumes()
+      .then((res) => setResumes(res.data || []))
+      .catch(console.error);
+  };
+
+  useEffect(() => {
+    fetchResumes();
+  }, []);
 
   const handleDrag = (e) => {
     e.preventDefault();
@@ -61,23 +71,31 @@ export default function ResumeHub() {
     }
   };
 
-  const handleJobComplete = (jobId, data) => {
-    setParsedResumes((prev) => [...prev, data]);
-    // Optionally remove job from queue
+  const handleJobComplete = (jobId) => {
+    fetchResumes(); // Pull persisted data from server
     setTimeout(() => {
       setJobs((prev) => prev.filter((j) => j.id !== jobId));
     }, 3000);
   };
 
+  const handleDelete = async (id) => {
+    try {
+      await deleteResume(id);
+      setResumes((prev) => prev.filter((r) => r._id !== id));
+    } catch (err) {
+      console.error("Delete failed", err);
+    }
+  };
+
   const handleDownloadResume = (resume) => {
-    const technical = resume?.metrics?.technical_skills || [];
-    const soft = resume?.metrics?.soft_skills || [];
-    const content = `Candidate Name: ${resume?.candidate_name || "Unknown"}\n\nTechnical Skills:\n- ${technical.join("\n- ")}\n\nSoft Skills:\n- ${soft.join("\n- ")}`;
+    const technical = resume?.parsedJson?.metrics?.technical_skills || [];
+    const soft = resume?.parsedJson?.metrics?.soft_skills || [];
+    const content = `Candidate Name: ${resume?.parsedJson?.candidate_name || "Unknown"}\n\nTechnical Skills:\n- ${technical.join("\n- ")}\n\nSoft Skills:\n- ${soft.join("\n- ")}`;
     const blob = new Blob([content], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `Resume_Analysis_${resume?.candidate_name || "Candidate"}.txt`;
+    a.download = `Resume_Analysis_${resume?.originalFilename || "Resume"}.txt`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -137,61 +155,120 @@ export default function ResumeHub() {
                 key={job.id}
                 jobId={job.id}
                 jobType={job.type}
-                onComplete={(data) => handleJobComplete(job.id, data)}
+                onComplete={() => handleJobComplete(job.id)}
               />
             ))}
           </div>
         </div>
       )}
 
-      {parsedResumes.length > 0 && (
+      {resumes.length > 0 && (
         <div className="space-y-8">
           <h3 className="text-white text-[10px] tracking-widest uppercase mb-6 border-b border-[#222222] pb-4">
-            Indexed Profiles
+            Indexed Profiles ({resumes.length})
           </h3>
-          {parsedResumes.map((resume, idx) => (
-            <div
-              key={idx}
-              className="border border-[#222222] p-8 glass-panel-hover"
-            >
-              <div className="flex justify-end mb-4">
-                <button
-                  onClick={() => handleDownloadResume(resume)}
-                  className="text-[10px] tracking-widest uppercase text-[#D4AF37] hover:text-white transition-colors"
-                >
-                  [ Download .txt ]
-                </button>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div>
-                  <p className="text-[10px] tracking-widest uppercase text-[#555555] mb-2">
-                    IDENTIFIER
-                  </p>
-                  <p className="text-white font-serif text-2xl">
-                    {resume?.candidate_name || "Unknown Entity"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[10px] tracking-widest uppercase text-[#555555] mb-2">
-                    DETECTED SKILLS
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {[
-                      ...(resume?.metrics?.technical_skills || []),
-                      ...(resume?.metrics?.soft_skills || []),
-                    ].map((skill) => (
-                      <span
-                        key={skill}
-                        className="border border-[#333333] text-[#888888] text-[10px] uppercase px-3 py-1"
+          {resumes.map((resume) => {
+            const parsed = resume.parsedJson || {};
+            const technical = parsed.metrics?.technical_skills || [];
+            const soft = parsed.metrics?.soft_skills || [];
+            const isParsed = resume.parseStatus === "done";
+            return (
+              <div
+                key={resume._id}
+                className="border border-[#222222] p-8 glass-panel-hover"
+              >
+                <div className="flex justify-between items-start mb-6">
+                  <div>
+                    <p className="text-white font-serif text-xl mb-1">
+                      {parsed.candidate_name || resume.originalFilename || "Unknown Entity"}
+                    </p>
+                    <p className="text-[10px] tracking-widest uppercase text-[#555555]">
+                      {resume.originalFilename}
+                    </p>
+                  </div>
+                  <div className="flex gap-4 items-center">
+                    <span
+                      className={`text-[10px] tracking-widest uppercase px-3 py-1 border ${
+                        isParsed
+                          ? "border-[#D4AF37] text-[#D4AF37]"
+                          : resume.parseStatus === "processing"
+                          ? "border-blue-500 text-blue-500"
+                          : resume.parseStatus === "failed"
+                          ? "border-red-500 text-red-500"
+                          : "border-[#555555] text-[#555555]"
+                      }`}
+                    >
+                      {resume.parseStatus?.toUpperCase() || "PENDING"}
+                    </span>
+                    {isParsed && (
+                      <button
+                        onClick={() => handleDownloadResume(resume)}
+                        className="text-[10px] tracking-widest uppercase text-[#D4AF37] hover:text-white transition-colors"
                       >
-                        {skill}
-                      </span>
-                    ))}
+                        [ Download ]
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleDelete(resume._id)}
+                      className="text-[10px] tracking-widest uppercase text-red-500 hover:text-white transition-colors"
+                    >
+                      [ Delete ]
+                    </button>
                   </div>
                 </div>
+
+                {isParsed && (technical.length > 0 || soft.length > 0) && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {technical.length > 0 && (
+                      <div>
+                        <p className="text-[10px] tracking-widest uppercase text-[#555555] mb-3">
+                          Technical Skills
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {technical.map((skill) => (
+                            <span
+                              key={skill}
+                              className="border border-sky-500/30 text-sky-400 text-[10px] uppercase px-3 py-1"
+                            >
+                              {skill}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {soft.length > 0 && (
+                      <div>
+                        <p className="text-[10px] tracking-widest uppercase text-[#555555] mb-3">
+                          Soft Skills
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {soft.map((skill) => (
+                            <span
+                              key={skill}
+                              className="border border-[#333333] text-[#888888] text-[10px] uppercase px-3 py-1"
+                            >
+                              {skill}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {!isParsed && resume.parseStatus !== "failed" && (
+                  <p className="text-[10px] tracking-widest uppercase text-[#555555]">
+                    AI parsing in progress — refresh to update.
+                  </p>
+                )}
+                {resume.parseStatus === "failed" && (
+                  <p className="text-[10px] tracking-widest uppercase text-red-500">
+                    Parse failed. Please re-upload this resume.
+                  </p>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </motion.div>
