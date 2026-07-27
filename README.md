@@ -1,4 +1,4 @@
-﻿<div align="center">
+<div align="center">
   <img src="./client/public/favicon.svg" alt="Nexus Logo" width="80" height="80" />
   <h1>NEXUS CAREER INTELLIGENCE</h1>
   <p><em>An AI-powered campus placement copilot — resume parsing, job matching, cover letters &amp; interview prep, all in one async workflow.</em></p>
@@ -241,6 +241,9 @@ git push origin main
 | Silent AI failures | `server/routes/ai.routes.js` | Redis down returned fake `{ jobStatus: "queued" }` — users waited forever. Now returns `503 QUEUE_UNAVAILABLE`. |
 | Invalid CORS | `ai-agents/main.py` | `allow_origins=["*"]` + `allow_credentials=True` is invalid per RFC 6454. Fixed: `credentials=False`. |
 | LLM timeouts | `ai-agents/config.py` | No timeout on LLM calls — one hung call froze entire Uvicorn process. Added 55s timeout on all providers. |
+| OpenAI SDK upgrade | `ai-agents/requirements.txt` | `openai==1.30.1` crashed with `'AsyncBeta' object has no attribute 'chat'`. Upgraded to `1.54.0` for Structured Outputs support. |
+| Quota exhaustion | `ai-agents/config.py` | Empty OpenAI credits crashed the worker (`429 insufficient_quota`). Added automatic fallback to Groq (`llama-3.3-70b-versatile`). |
+| Missing Agent UI | `client/src/components/*` | Resumes didn't fetch on mount; Interview/Cover Letter buttons were hidden/missing. Completely re-wired UI state to surface all 6 agents. |
 
 ---
 
