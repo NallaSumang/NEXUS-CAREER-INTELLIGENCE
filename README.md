@@ -45,13 +45,13 @@ This is a **monorepo** deployed as a **single Docker container** on Render's fre
 |  |          ^           |    |    interview-prep      |  |
 |  |  +-------+-------+   |    |    analytics           |  |
 |  |  | BullMQ        |   |    +------------------------+  |
-|  |  | Producers     |   |                                 |
-|  +--+---------------+---+                                 |
-|          |                                                 |
-|          v                                                 |
-|   +--------------+                                         |
-|   | Upstash Redis|  <- Job Queue                          |
-|   +--------------+                                         |
+|  |  | Producers     |   |                                |
+|  +--+---------------+---+                                |
+|          |                                               |
+|          v                                               |
+|   +--------------+                                       |
+|   | Upstash Redis|  <- Job Queue                         |
+|   +--------------+                                       |
 +----------------------------------------------------------+
          |                           |
          v                           v
