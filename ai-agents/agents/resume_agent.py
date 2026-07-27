@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+﻿from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional
 import os
@@ -47,67 +47,18 @@ async def parse_resume(payload: AnalysisRequest):
 
         provider = os.getenv("AI_PROVIDER", "openai").lower()
 
-        if provider == "openai":
-            from openai import AsyncOpenAI
-
-            client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-            # Use native Structured Outputs (beta.chat.completions.parse)
-            response = await client.beta.chat.completions.parse(
-                model="gpt-4o-2024-08-06",
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {
-                        "role": "user",
-                        "content": f"Analyze the following resume text:\n\n{raw_resume_text}",
-                    },
-                ],
-                response_format=ResumeAnalysisResponse,
-            )
-
-            parsed_data = response.choices[0].message.parsed
-
-            # Approximate token count for DB tracking
-            parsed_data.tokens = len(raw_resume_text.split())
-            return parsed_data
-
-        elif provider == "gemini":
-            # Fallback for Gemini if OpenAI is unavailable
-            import google.generativeai as genai
-            import json
-
-            genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-            model = genai.GenerativeModel("gemini-1.5-flash")
-
-            prompt = f"{system_prompt}\n\nAnalyze the following resume text and respond ONLY with valid JSON matching this exact schema:\n{ResumeAnalysisResponse.model_json_schema()}\n\n{raw_resume_text}"
-
-            response = await model.generate_content_async(
-                prompt, generation_config={"response_mime_type": "application/json"}
-            )
-
-            import re
-
-            clean_text = re.sub(
-                r"```json\s*", "", response.text, flags=re.MULTILINE | re.IGNORECASE
-            )
-            clean_text = re.sub(r"```\s*", "", clean_text, flags=re.MULTILINE)
-
-            data_dict = json.loads(clean_text)
-            parsed_data = ResumeAnalysisResponse(**data_dict)
-            parsed_data.tokens = len(raw_resume_text.split())
-            return parsed_data
-
-        elif provider == "groq":
+        # ── Groq helper — also called as fallback when OpenAI quota is exceeded ──
+        async def _groq_parse() -> ResumeAnalysisResponse:
             from openai import AsyncOpenAI
             import json
 
-            client = AsyncOpenAI(
+            groq_client = AsyncOpenAI(
                 api_key=os.getenv("GROQ_API_KEY"),
                 base_url="https://api.groq.com/openai/v1",
+                timeout=55.0,
             )
-
-            # Groq does NOT support OpenAI's beta.parse() structured outputs.
-            # We must use json_object mode with an explicit schema example.
+            # Groq does NOT support beta.parse() structured outputs.
+            # Use json_object mode with an explicit schema example.
             schema_prompt = system_prompt + """
 
 You MUST respond with ONLY a valid JSON object. No markdown, no explanation.
@@ -127,8 +78,7 @@ The JSON MUST have exactly these keys at the top level:
 Every key is REQUIRED. Do NOT omit "metrics" or "recommended_roles".
 The "metrics" key MUST be a nested object with "technical_skills", "soft_skills", and "experience_years".
 """
-
-            response = await client.chat.completions.create(
+            groq_resp = await groq_client.chat.completions.create(
                 model="llama-3.3-70b-versatile",
                 messages=[
                     {"role": "system", "content": schema_prompt},
@@ -140,10 +90,8 @@ The "metrics" key MUST be a nested object with "technical_skills", "soft_skills"
                 response_format={"type": "json_object"},
                 temperature=0.1,
             )
-
-            content = response.choices[0].message.content
+            content = groq_resp.choices[0].message.content
             data_dict = json.loads(content)
-
             # Defensive: ensure nested metrics exists
             if "metrics" not in data_dict:
                 data_dict["metrics"] = {
@@ -153,10 +101,61 @@ The "metrics" key MUST be a nested object with "technical_skills", "soft_skills"
                 }
             if "recommended_roles" not in data_dict:
                 data_dict["recommended_roles"] = data_dict.pop("roles", [])
+            result = ResumeAnalysisResponse(**data_dict)
+            result.tokens = len(raw_resume_text.split())
+            return result
 
+        # ── Provider dispatch ─────────────────────────────────────────────────
+        if provider == "openai":
+            from openai import AsyncOpenAI
+            from config import _is_quota_error
+
+            client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"), timeout=55.0)
+            try:
+                # beta.chat.completions.parse() requires openai >= 1.40.0
+                response = await client.beta.chat.completions.parse(
+                    model="gpt-4o-2024-08-06",
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {
+                            "role": "user",
+                            "content": f"Analyze the following resume text:\n\n{raw_resume_text}",
+                        },
+                    ],
+                    response_format=ResumeAnalysisResponse,
+                )
+                parsed_data = response.choices[0].message.parsed
+                parsed_data.tokens = len(raw_resume_text.split())
+                return parsed_data
+            except Exception as e:
+                if not _is_quota_error(e):
+                    raise
+                print("[Fallback] OpenAI quota exceeded in resume_agent — switching to Groq")
+                return await _groq_parse()
+
+        elif provider == "gemini":
+            import google.generativeai as genai
+            import json
+            import re
+
+            genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+            model = genai.GenerativeModel("gemini-1.5-flash")
+            prompt = (
+                f"{system_prompt}\n\nAnalyze the following resume text and respond ONLY with valid JSON "
+                f"matching this exact schema:\n{ResumeAnalysisResponse.model_json_schema()}\n\n{raw_resume_text}"
+            )
+            response = await model.generate_content_async(
+                prompt, generation_config={"response_mime_type": "application/json"}
+            )
+            clean_text = re.sub(r"```json\s*", "", response.text, flags=re.MULTILINE | re.IGNORECASE)
+            clean_text = re.sub(r"```\s*", "", clean_text, flags=re.MULTILINE)
+            data_dict = json.loads(clean_text)
             parsed_data = ResumeAnalysisResponse(**data_dict)
             parsed_data.tokens = len(raw_resume_text.split())
             return parsed_data
+
+        elif provider == "groq":
+            return await _groq_parse()
 
         else:
             raise ValueError(f"Unsupported AI Provider: {provider}")
