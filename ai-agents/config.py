@@ -48,19 +48,23 @@ def _is_quota_error(e: Exception) -> bool:
 
 
 def _is_model_unavailable(e: Exception) -> bool:
-    """Detect Groq model-level errors: decommissioned, not found, no access."""
+    """
+    Detect Groq model-level errors (decommissioned / not found).
+    Uses the structured API error code from the response body — NOT broad
+    text matching — so auth errors ("API key does not exist") are never
+    misclassified as model errors and get propagated immediately.
+    """
+    # Primary: check structured error code from response body (openai SDK exposes this)
+    body = getattr(e, "body", None) or {}
+    if isinstance(body, dict):
+        code = body.get("error", {}).get("code", "")
+        if code in ("model_not_found", "model_decommissioned"):
+            return True
+
+    # Secondary: tight keyword match — only specific model error phrases
     msg = str(e).lower()
-    return any(
-        kw in msg
-        for kw in (
-            "model_not_found",
-            "model_decommissioned",
-            "does not exist",
-            "decommissioned",
-            "no longer supported",
-            "model not found",
-        )
-    )
+    return "model_decommissioned" in msg or "model_not_found" in msg
+
 
 
 async def _call_groq_fallback(prompt: str, json_mode: bool) -> str:
