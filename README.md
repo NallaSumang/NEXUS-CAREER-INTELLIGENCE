@@ -73,6 +73,15 @@ This is a **monorepo** deployed as a **single Docker container** on Render's fre
 
 ---
 
+## 🔐 Security Architecture
+
+To protect user data and prevent unauthorized database access in production, Nexus implements strict authentication controls:
+* **Firebase JWT Verification:** All protected routes in the Express API require a valid Firebase ID token in the `Authorization: Bearer` header.
+* **Production Mock Auth Blocking:** During early development, the frontend generated `mock_email` tokens. A security patch was implemented in `server/middleware/auth.js` to strictly reject these mock tokens when running in a production environment (Render).
+* **Emergency Override:** If testing requires bypassing Firebase in production, the `ALLOW_MOCK_AUTH=true` environment variable can be set to temporarily restore access.
+
+---
+
 ## Tech Stack
 
 | Layer | Technology | Why |
@@ -244,6 +253,7 @@ git push origin main
 | OpenAI SDK upgrade | `ai-agents/requirements.txt` | `openai==1.30.1` crashed with `'AsyncBeta' object has no attribute 'chat'`. Upgraded to `1.54.0` for Structured Outputs support. |
 | Quota exhaustion | `ai-agents/config.py` | Empty OpenAI credits crashed the worker (`429 insufficient_quota`). Added automatic fallback to Groq (`llama-3.3-70b-versatile`). |
 | Missing Agent UI | `client/src/components/*` | Resumes didn't fetch on mount; Interview/Cover Letter buttons were hidden/missing. Completely re-wired UI state to surface all 6 agents. |
+| Production Auth Bypass | `server/middleware/auth.js` | Dev mock tokens were inadvertently allowed in production. Hardened auth middleware to strictly reject `mock_` tokens outside of local dev, protecting the database. |
 
 ---
 
