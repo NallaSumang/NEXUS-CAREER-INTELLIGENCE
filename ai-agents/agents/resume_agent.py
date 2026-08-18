@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional
 import os
-from config import GROQ_MODEL
+from config import GROQ_MODEL_CHAIN, _is_model_unavailable
 
 router = APIRouter()
 
@@ -79,32 +79,50 @@ The JSON MUST have exactly these keys at the top level:
 Every key is REQUIRED. Do NOT omit "metrics" or "recommended_roles".
 The "metrics" key MUST be a nested object with "technical_skills", "soft_skills", and "experience_years".
 """
-            groq_resp = await groq_client.chat.completions.create(
-                model=GROQ_MODEL,
-                messages=[
-                    {"role": "system", "content": schema_prompt},
-                    {
-                        "role": "user",
-                        "content": f"Analyze the following resume text:\n\n{raw_resume_text}",
-                    },
-                ],
-                response_format={"type": "json_object"},
-                temperature=0.1,
+            last_error: Exception | None = None
+            for model in GROQ_MODEL_CHAIN:
+                try:
+                    print(f"[Groq/resume] Trying model: {model}")
+                    groq_resp = await groq_client.chat.completions.create(
+                        model=model,
+                        messages=[
+                            {"role": "system", "content": schema_prompt},
+                            {
+                                "role": "user",
+                                "content": f"Analyze the following resume text:\n\n{raw_resume_text}",
+                            },
+                        ],
+                        response_format={"type": "json_object"},
+                        temperature=0.1,
+                    )
+                    print(f"[Groq/resume] ✅ Success with model: {model}")
+                    content = groq_resp.choices[0].message.content
+                    data_dict = json.loads(content)
+                    # Defensive: ensure nested metrics exists
+                    if "metrics" not in data_dict:
+                        data_dict["metrics"] = {
+                            "technical_skills": data_dict.pop("technical_skills", []),
+                            "soft_skills": data_dict.pop("soft_skills", []),
+                            "experience_years": data_dict.pop("experience_years", 0.0),
+                        }
+                    if "recommended_roles" not in data_dict:
+                        data_dict["recommended_roles"] = data_dict.pop("roles", [])
+                    result = ResumeAnalysisResponse(**data_dict)
+                    result.tokens = len(raw_resume_text.split())
+                    return result
+
+                except Exception as e:
+                    if _is_model_unavailable(e):
+                        print(f"[Groq/resume] ⚠️  Model {model} unavailable — trying next...")
+                        last_error = e
+                        continue
+                    raise  # auth/rate-limit/network error — propagate immediately
+
+            raise RuntimeError(
+                f"All Groq models exhausted in resume_agent. "
+                f"Last error: {last_error}. Chain: {GROQ_MODEL_CHAIN}"
             )
-            content = groq_resp.choices[0].message.content
-            data_dict = json.loads(content)
-            # Defensive: ensure nested metrics exists
-            if "metrics" not in data_dict:
-                data_dict["metrics"] = {
-                    "technical_skills": data_dict.pop("technical_skills", []),
-                    "soft_skills": data_dict.pop("soft_skills", []),
-                    "experience_years": data_dict.pop("experience_years", 0.0),
-                }
-            if "recommended_roles" not in data_dict:
-                data_dict["recommended_roles"] = data_dict.pop("roles", [])
-            result = ResumeAnalysisResponse(**data_dict)
-            result.tokens = len(raw_resume_text.split())
-            return result
+
 
         # ── Provider dispatch ─────────────────────────────────────────────────
         if provider == "openai":

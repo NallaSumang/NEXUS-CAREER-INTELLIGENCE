@@ -9,7 +9,27 @@ env_path = Path(__file__).resolve().parent.parent / ".env"
 load_dotenv(dotenv_path=env_path)
 
 AI_PROVIDER = os.getenv("AI_PROVIDER", "openai").lower()
-GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+
+# ── Groq Model Fallback Chain ─────────────────────────────────────────────────
+# Tried in order. If a model is decommissioned/unavailable the engine
+# automatically rolls over to the next one — zero manual intervention needed.
+# Override the entire chain by setting GROQ_MODEL env var (comma-separated).
+_DEFAULT_GROQ_CHAIN = [
+    "llama-3.1-8b-instant",       # Primary  — fast, always free, very stable
+    "llama-3.3-70b-versatile",    # Fallback 1 — higher quality
+    "gemma2-9b-it",               # Fallback 2 — Google model on Groq, stable
+    "mixtral-8x7b-32768",         # Fallback 3 — last resort
+]
+
+_env_override = os.getenv("GROQ_MODEL", "")
+GROQ_MODEL_CHAIN: list[str] = (
+    [m.strip() for m in _env_override.split(",") if m.strip()]
+    if _env_override
+    else _DEFAULT_GROQ_CHAIN
+)
+
+# Convenience alias — first model in chain (used for logging)
+GROQ_MODEL = GROQ_MODEL_CHAIN[0]
 
 
 def strip_markdown(text: str) -> str:
@@ -27,30 +47,70 @@ def _is_quota_error(e: Exception) -> bool:
     )
 
 
+def _is_model_unavailable(e: Exception) -> bool:
+    """Detect Groq model-level errors: decommissioned, not found, no access."""
+    msg = str(e).lower()
+    return any(
+        kw in msg
+        for kw in (
+            "model_not_found",
+            "model_decommissioned",
+            "does not exist",
+            "decommissioned",
+            "no longer supported",
+            "model not found",
+        )
+    )
+
+
 async def _call_groq_fallback(prompt: str, json_mode: bool) -> str:
-    """Direct Groq call used as fallback when OpenAI quota is exhausted."""
+    """
+    Groq call with automatic model fallback chain.
+    Tries each model in GROQ_MODEL_CHAIN in order.
+    Falls through to the next if the current one is unavailable/decommissioned.
+    Raises RuntimeError only when the entire chain is exhausted.
+    """
     from openai import AsyncOpenAI
 
     groq_key = os.getenv("GROQ_API_KEY")
     if not groq_key:
         raise RuntimeError(
-            "OpenAI quota exceeded and GROQ_API_KEY is not set. "
-            "Add GROQ_API_KEY to your environment variables to enable the Groq fallback."
+            "GROQ_API_KEY is not set. "
+            "Add it to your Render environment variables."
         )
 
-    print(f"[Fallback] OpenAI quota exceeded — switching to Groq ({GROQ_MODEL})")
     client = AsyncOpenAI(
         api_key=groq_key,
         base_url="https://api.groq.com/openai/v1",
         timeout=55.0,
     )
-    response = await client.chat.completions.create(
-        model=GROQ_MODEL,
-        messages=[{"role": "user", "content": prompt}],
-        response_format={"type": "json_object"} if json_mode else None,
-        temperature=0.1,
+
+    last_error: Exception | None = None
+
+    for model in GROQ_MODEL_CHAIN:
+        try:
+            print(f"[Groq] Trying model: {model}")
+            response = await client.chat.completions.create(
+                model=model,
+                messages=[{"role": "user", "content": prompt}],
+                response_format={"type": "json_object"} if json_mode else None,
+                temperature=0.1,
+            )
+            print(f"[Groq] ✅ Success with model: {model}")
+            return response.choices[0].message.content
+
+        except Exception as e:
+            if _is_model_unavailable(e):
+                print(f"[Groq] ⚠️  Model {model} unavailable — trying next in chain...")
+                last_error = e
+                continue  # roll to next model
+            raise  # non-model error (auth, rate-limit, network) → propagate immediately
+
+    raise RuntimeError(
+        f"All Groq models in the fallback chain are unavailable. "
+        f"Last error: {last_error}. "
+        f"Chain tried: {GROQ_MODEL_CHAIN}"
     )
-    return response.choices[0].message.content
 
 
 async def call_llm(prompt: str, json_mode: bool = True) -> str:
@@ -58,6 +118,7 @@ async def call_llm(prompt: str, json_mode: bool = True) -> str:
     Unified LLM call. Enforces JSON mode at the API level.
     Strips markdown fences from the response before returning.
     Automatically falls back to Groq if OpenAI quota is exhausted.
+    Groq calls use the full model fallback chain.
     """
     if json_mode:
         prompt += "\n\nRespond ONLY with valid JSON. No markdown fences. No preamble."
@@ -77,6 +138,7 @@ async def call_llm(prompt: str, json_mode: bool = True) -> str:
             result = response.choices[0].message.content
         except Exception as e:
             if _is_quota_error(e):
+                print("[Fallback] OpenAI quota exceeded — switching to Groq chain")
                 result = await _call_groq_fallback(prompt, json_mode)
             else:
                 raise
