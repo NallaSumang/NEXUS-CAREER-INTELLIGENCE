@@ -11,14 +11,15 @@ load_dotenv(dotenv_path=env_path)
 AI_PROVIDER = os.getenv("AI_PROVIDER", "openai").lower()
 
 # ── Groq Model Fallback Chain ─────────────────────────────────────────────────
+# Verified against this account's available models via GET /v1/models.
 # Tried in order. If a model is decommissioned/unavailable the engine
-# automatically rolls over to the next one — zero manual intervention needed.
+# automatically rolls to the next — zero manual intervention needed.
 # Override the entire chain by setting GROQ_MODEL env var (comma-separated).
 _DEFAULT_GROQ_CHAIN = [
-    "llama-3.1-8b-instant",       # Primary  — fast, always free, very stable
-    "llama-3.3-70b-versatile",    # Fallback 1 — higher quality
-    "gemma2-9b-it",               # Fallback 2 — Google model on Groq, stable
-    "mixtral-8x7b-32768",         # Fallback 3 — last resort
+    "groq/compound",        # Primary  — Groq flagship, strong JSON, agentic
+    "qwen/qwen3.6-27b",     # Fallback 1 — Qwen, excellent structured output
+    "groq/compound-mini",   # Fallback 2 — lighter, faster
+    "openai/gpt-oss-20b",   # Fallback 3 — last resort
 ]
 
 _env_override = os.getenv("GROQ_MODEL", "")
