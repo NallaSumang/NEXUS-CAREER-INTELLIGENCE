@@ -50,9 +50,9 @@ const resumeWorker = new Worker(
 
       // 2. Extract raw text from PDF
       const parsedPdf = await pdfParse(buffer);
-      // Truncate to ~15k chars (approx 3-4k tokens) to prevent 413 Payload Too Large from Groq API
-      // A standard 2-page resume is rarely over 6k chars. If it's huge, it's usually embedded junk.
-      const rawText = parsedPdf.text.substring(0, 15000);
+      // Truncate to ~8k chars (approx 2k tokens) to prevent 413 Payload Too Large from Groq API
+      // A standard 2-page resume is rarely over 5k chars. This enforces a strict 3-4 page limit.
+      const rawText = parsedPdf.text.substring(0, 8000);
 
       if (!rawText || rawText.trim().length === 0) {
         throw new Error("PDF parsing resulted in empty text content.");
