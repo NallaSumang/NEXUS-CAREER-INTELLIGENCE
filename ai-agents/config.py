@@ -50,7 +50,7 @@ def _is_quota_error(e: Exception) -> bool:
 
 def _is_model_unavailable(e: Exception) -> bool:
     """
-    Detect Groq model-level errors (decommissioned / not found).
+    Detect Groq model-level errors (decommissioned / not found / too large).
     Uses the structured API error code from the response body — NOT broad
     text matching — so auth errors ("API key does not exist") are never
     misclassified as model errors and get propagated immediately.
@@ -59,12 +59,12 @@ def _is_model_unavailable(e: Exception) -> bool:
     body = getattr(e, "body", None) or {}
     if isinstance(body, dict):
         code = body.get("error", {}).get("code", "")
-        if code in ("model_not_found", "model_decommissioned"):
+        if code in ("model_not_found", "model_decommissioned", "request_too_large"):
             return True
 
     # Secondary: tight keyword match — only specific model error phrases
     msg = str(e).lower()
-    return "model_decommissioned" in msg or "model_not_found" in msg
+    return "model_decommissioned" in msg or "model_not_found" in msg or "request_too_large" in msg or "413" in msg
 
 
 
