@@ -11,6 +11,10 @@ export async function verifyToken(req, res, next) {
   try {
     // Local dev mock — restore access until Firebase is configured in production
     if (token.startsWith("mock_")) {
+      if (process.env.NODE_ENV === "production" || process.env.RENDER) {
+        console.warn("⚠️ SECURITY ALERT: Attempted mock token usage in production blocked.");
+        return res.status(403).json({ error: "Forbidden: Mock tokens are disabled in production environments" });
+      }
       const email = token.replace("mock_", "");
       let user = await User.findOne({ email });
       if (!user) {
