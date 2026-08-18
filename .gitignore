@@ -117,3 +117,5 @@ venv/
 .venv/
 env/
 .env/
+docs/
+ai-agents/tests/
