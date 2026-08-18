@@ -9,6 +9,7 @@ env_path = Path(__file__).resolve().parent.parent / ".env"
 load_dotenv(dotenv_path=env_path)
 
 AI_PROVIDER = os.getenv("AI_PROVIDER", "openai").lower()
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama3-70b-8192")
 
 
 def strip_markdown(text: str) -> str:
@@ -37,14 +38,14 @@ async def _call_groq_fallback(prompt: str, json_mode: bool) -> str:
             "Add GROQ_API_KEY to your environment variables to enable the Groq fallback."
         )
 
-    print("[Fallback] OpenAI quota exceeded — switching to Groq (llama-3.3-70b-versatile)")
+    print(f"[Fallback] OpenAI quota exceeded — switching to Groq ({GROQ_MODEL})")
     client = AsyncOpenAI(
         api_key=groq_key,
         base_url="https://api.groq.com/openai/v1",
         timeout=55.0,
     )
     response = await client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model=GROQ_MODEL,
         messages=[{"role": "user", "content": prompt}],
         response_format={"type": "json_object"} if json_mode else None,
         temperature=0.1,

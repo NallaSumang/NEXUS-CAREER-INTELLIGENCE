@@ -1,7 +1,8 @@
-﻿from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional
 import os
+from config import GROQ_MODEL
 
 router = APIRouter()
 
@@ -79,7 +80,7 @@ Every key is REQUIRED. Do NOT omit "metrics" or "recommended_roles".
 The "metrics" key MUST be a nested object with "technical_skills", "soft_skills", and "experience_years".
 """
             groq_resp = await groq_client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
+                model=GROQ_MODEL,
                 messages=[
                     {"role": "system", "content": schema_prompt},
                     {
