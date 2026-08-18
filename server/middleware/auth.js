@@ -9,8 +9,8 @@ export async function verifyToken(req, res, next) {
   }
 
   try {
-    // Local dev mock routing based on frontend email
-    if (token.startsWith("mock_")) {
+    // Local dev mock — DISABLED in production
+    if (process.env.NODE_ENV !== "production" && token.startsWith("mock_")) {
       const email = token.replace("mock_", "");
       let user = await User.findOne({ email });
       if (!user) {

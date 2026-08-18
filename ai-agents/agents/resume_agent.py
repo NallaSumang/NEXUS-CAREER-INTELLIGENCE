@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional
 import os
-from config import GROQ_MODEL_CHAIN, _is_model_unavailable
+from config import AI_PROVIDER, GROQ_MODEL_CHAIN, _is_model_unavailable
 
 router = APIRouter()
 
@@ -46,7 +46,7 @@ async def parse_resume(payload: AnalysisRequest):
         5. ROLE MATCHING: Suggest 2-3 specific roles they are actually qualified for based on the text.
         """
 
-        provider = os.getenv("AI_PROVIDER", "openai").lower()
+        provider = AI_PROVIDER
 
         # ── Groq helper — also called as fallback when OpenAI quota is exceeded ──
         async def _groq_parse() -> ResumeAnalysisResponse:

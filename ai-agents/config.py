@@ -162,7 +162,7 @@ async def call_llm(prompt: str, json_mode: bool = True) -> str:
         )
         # Gemini SDK is sync — run in thread pool with a 55s timeout
         response = await asyncio.wait_for(
-            asyncio.get_event_loop().run_in_executor(
+            asyncio.get_running_loop().run_in_executor(
                 None,
                 lambda: model.generate_content(prompt, generation_config=generation_config),
             ),

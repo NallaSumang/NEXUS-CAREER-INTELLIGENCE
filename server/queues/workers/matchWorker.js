@@ -163,8 +163,9 @@ const matchWorker = new Worker(
           { timeout: 60000 },
         );
       } else {
-        // Unknown job type — skip without throwing
-        console.warn(`⚠️  Unknown job type: ${job.name} — skipping`);
+        // Unknown job type — discard so BullMQ doesn't retry or mark as completed
+        console.warn(`⚠️  Unknown job type: ${job.name} — discarding`);
+        await job.discard();
         return;
       }
 

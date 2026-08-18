@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from models import CoverLetterRequest
 from config import call_llm
 import json
@@ -20,10 +20,10 @@ async def generate_cover_letter(req: CoverLetterRequest):
         .replace("{resume_json}", json.dumps(req.resumeJson))
         .replace("{job_description}", req.jobDescription)
     )
-    response_text = await call_llm(prompt)
 
     try:
-        data = json.loads(response_text)
-        return data
+        response_text = await call_llm(prompt)
+        return json.loads(response_text)
     except Exception as e:
-        return {"error": str(e), "raw": response_text}
+        print(f"[cover_letter_agent] Error: {e}")
+        raise HTTPException(status_code=500, detail=f"Cover letter generation failed: {str(e)}")

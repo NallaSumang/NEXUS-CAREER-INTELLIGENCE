@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from models import MatchRequest
 from config import call_llm
 import json
@@ -16,14 +16,11 @@ async def compute_match(req: MatchRequest):
     prompt = template.replace("{resume_json}", json.dumps(req.resumeJson)).replace(
         "{job_requirements}", json.dumps(req.jobRequirements)
     )
-
-    # Force the format from the new prompt
     prompt += '\n\nReturn JSON { "match_score": int, "missing_skills": [], "cover_letter": "string" }'
 
-    response_text = await call_llm(prompt)
-
     try:
-        data = json.loads(response_text)
-        return data
+        response_text = await call_llm(prompt)
+        return json.loads(response_text)
     except Exception as e:
-        return {"error": str(e), "raw": response_text}
+        print(f"[match_agent] Error: {e}")
+        raise HTTPException(status_code=500, detail=f"Match computation failed: {str(e)}")

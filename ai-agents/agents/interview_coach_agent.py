@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from models import InterviewPrepRequest
 from config import call_llm
 import json
@@ -19,10 +19,10 @@ async def generate_interview_prep(req: InterviewPrepRequest):
         .replace("{resume_json}", json.dumps(req.resumeJson))
         .replace("{required_skills}", json.dumps(req.requiredSkills))
     )
-    response_text = await call_llm(prompt)
 
     try:
-        data = json.loads(response_text)
-        return data
+        response_text = await call_llm(prompt)
+        return json.loads(response_text)
     except Exception as e:
-        return {"error": str(e), "raw": response_text}
+        print(f"[interview_coach_agent] Error: {e}")
+        raise HTTPException(status_code=500, detail=f"Interview prep generation failed: {str(e)}")

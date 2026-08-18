@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from models import AnalyticsRequest
 from config import call_llm
 import json
@@ -16,10 +16,10 @@ async def generate_insights(req: AnalyticsRequest):
     prompt = template.replace(
         "{application_history}", json.dumps(req.applicationHistory)
     )
-    response_text = await call_llm(prompt)
 
     try:
-        data = json.loads(response_text)
-        return data
+        response_text = await call_llm(prompt)
+        return json.loads(response_text)
     except Exception as e:
-        return {"error": str(e), "raw": response_text}
+        print(f"[analytics_agent] Error: {e}")
+        raise HTTPException(status_code=500, detail=f"Analytics generation failed: {str(e)}")

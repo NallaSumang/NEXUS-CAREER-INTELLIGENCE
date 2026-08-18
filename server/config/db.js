@@ -29,6 +29,11 @@ export async function connectDB() {
   try {
     cached.conn = await cached.promise;
   } catch (e) {
+    // In production, never silently downgrade — data loss on restart is unacceptable
+    if (process.env.NODE_ENV === "production") {
+      console.error("❌ MongoDB Atlas connection failed in production. Refusing to start with ephemeral DB.", e.message);
+      throw e;
+    }
     console.warn("⚠️ Bypassing Atlas firewall: Using local ephemeral MongoDB");
     try {
       const { MongoMemoryServer } = await import("mongodb-memory-server");

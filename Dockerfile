@@ -30,9 +30,9 @@ WORKDIR $HOME/app/ai-agents
 ENV PATH="$HOME/.local/bin:$PATH"
 RUN pip install --user --no-cache-dir -r requirements.txt
 
-# 4. Install concurrently for orchestrating both servers
+# 4. Install root deps (includes concurrently — already in devDependencies)
 WORKDIR $HOME/app
-RUN npm install concurrently
+RUN npm install
 
 # 5. Environment Config
 ENV PORT=7860

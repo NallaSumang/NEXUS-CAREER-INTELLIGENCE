@@ -5,11 +5,36 @@ services:
     plan: free
     dockerfilePath: ./Dockerfile
     envVars:
+      # ── Database ─────────────────────────────────────────────────────────────
       - key: MONGO_URI
         sync: false
       - key: REDIS_URL
         sync: false
-      - key: OPENAI_API_KEY
-        sync: false
+
+      # ── AI Provider ──────────────────────────────────────────────────────────
+      - key: AI_PROVIDER
+        value: groq              # groq = free, no credits needed
       - key: GROQ_API_KEY
         sync: false
+      - key: OPENAI_API_KEY
+        sync: false              # optional — only needed if AI_PROVIDER=openai
+      - key: GEMINI_API_KEY
+        sync: false              # optional — only needed if AI_PROVIDER=gemini
+
+      # ── Internal Service URL (monolith: both services run in same container) ─
+      - key: AI_SERVICE_URL
+        value: http://localhost:8000
+
+      # ── Firebase Auth ────────────────────────────────────────────────────────
+      - key: FIREBASE_PROJECT_ID
+        sync: false
+      - key: FIREBASE_CLIENT_EMAIL
+        sync: false
+      - key: FIREBASE_PRIVATE_KEY
+        sync: false              # paste full key string with \n escapes
+
+      # ── App Config ───────────────────────────────────────────────────────────
+      - key: NODE_ENV
+        value: production
+      - key: CLIENT_URL
+        value: https://nexus-ai-vqxe.onrender.com
